@@ -1,10 +1,10 @@
-#include <stdio.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
 #include <SDL2/SDL.h>
 #include <pthread.h>
-#include <time.h>
-#include <pthread.h>
-#include <stdlib.h>
+#include <ctime>
+#include <cstdlib>
+using namespace std;
 
 #define WIDTH   1200
 #define HEIGHT  800
@@ -17,7 +17,7 @@
 #define EPSILON  1e-6
 
 #define COL_BLACK      0x00000000
-uint32_t COLORS[] = {0x00ff0000, 0x0000ff00, 0x000000ff, 0x00ffff00, 0x00ff00ff, 0x0000ffff};
+    uint32_t COLORS[] = {0x00ff0000, 0x0000ff00, 0x000000ff, 0x00ffff00, 0x00ff00ff, 0x0000ffff};
 
 #define NUM_THREADS 4
 
@@ -213,17 +213,17 @@ static void accelerations_parallel(Planet b[])
 {
     int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
 
-    pthread_t *threads = malloc(sizeof(pthread_t) * t_N);
-    AccelerationArgsV1 *args = malloc(sizeof(AccelerationArgsV1) * t_N);
+    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
+    AccelerationArgsV1 *args = (AccelerationArgsV1 *)malloc(sizeof(AccelerationArgsV1) * t_N);
 
-    double **t_ax = malloc(sizeof(double *) * t_N);
-    double **t_ay = malloc(sizeof(double *) * t_N);
-    double **t_az = malloc(sizeof(double *) * t_N);
+    double **t_ax = (double **)malloc(sizeof(double *) * t_N);
+    double **t_ay = (double **)malloc(sizeof(double *) * t_N);
+    double **t_az = (double **)malloc(sizeof(double *) * t_N);
     for (int t = 0; t < t_N; ++t)
     {
-        t_ax[t] = calloc(NUM_BODIES, sizeof(double));
-        t_ay[t] = calloc(NUM_BODIES, sizeof(double));
-        t_az[t] = calloc(NUM_BODIES, sizeof(double));
+        t_ax[t] = (double *)calloc(NUM_BODIES, sizeof(double));
+        t_ay[t] = (double *)calloc(NUM_BODIES, sizeof(double));
+        t_az[t] = (double *)calloc(NUM_BODIES, sizeof(double));
     }
 
     for (int i = 0; i < NUM_BODIES; ++i) b[i].ax = b[i].ay = b[i].az = 0.0;
