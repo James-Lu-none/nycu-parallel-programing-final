@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "planet.hpp"
 #include "accelerations.hpp"
-#include "TracyOpenCL.hpp"
+#include "Tracy.hpp"
 
 #define WIDTH 1200
 #define HEIGHT 800
