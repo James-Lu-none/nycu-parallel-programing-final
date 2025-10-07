@@ -5,6 +5,7 @@
 #include <ctime>
 #include <cstdlib>
 
+#include "tracy/public/TracyClient.cpp"
 #include "tracy/public/tracy/TracyOpenCL.hpp"
 
 using namespace std;
@@ -43,6 +44,7 @@ typedef struct {
 
 static void fill_circle(SDL_Surface *surf, int cx, int cy, int cz, int rad, Uint32 col)
 {
+    ZoneScopedN("fill_circle");
     int scaled_rad = rad * view_z / (view_z + cz);
     int rad2 = scaled_rad * scaled_rad;
     double brightness = (view_z - cz) / view_z;
@@ -75,6 +77,7 @@ static void fill_circle(SDL_Surface *surf, int cx, int cy, int cz, int rad, Uint
 
 static void trail_push(Trail *t, int x, int y, int z)
 {
+    ZoneScopedN("trail_push");
     if (t->size == 0) {
         t->x[0] = x;
         t->y[0] = y;
@@ -96,6 +99,7 @@ static void trail_push(Trail *t, int x, int y, int z)
 
 static void trail_draw(SDL_Surface *surf, const Trail *t, Uint32 col)
 {
+    ZoneScopedN("trail_draw");
     for (int i = 0; i < t->size; ++i) {
         int idx = (t->head - 1 - i + TRAIL_BUF) % TRAIL_BUF;
         int scaled_rad = 2 * view_z / (view_z + t->z[idx]);
@@ -214,6 +218,8 @@ static void *accelerations_thread_v2(void *arg)
 
 static void accelerations_parallel(Planet b[])
 {
+    ZoneScopedN("accelerations_parallel");
+
     int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
@@ -272,6 +278,7 @@ static void accelerations_parallel(Planet b[])
 
 static void accelerations(const Planet b[], double ax[], double ay[], double az[])
 {
+    ZoneScopedN("accelerations");
     for (int i = 0; i < NUM_BODIES; ++i) ax[i] = ay[i] = az[i] = 0.0;
 
     for (int i = 0; i < NUM_BODIES; ++i) {
@@ -302,6 +309,7 @@ static void step_leapfrog(Planet b[], double dt)
     static int first = 1;
 
     if (first) {
+        ZoneScopedN("step_leapfrog_first");
         accelerations_parallel(b);
         first = 0;
     }
@@ -318,6 +326,7 @@ static void step_leapfrog(Planet b[], double dt)
     accelerations_parallel(b);
 
     for (int i = 0; i < NUM_BODIES; ++i) {
+        ZoneScopedN("step_leapfrog");
         b[i].vx += 0.5 * b[i].ax * dt;
         b[i].vy += 0.5 * b[i].ay * dt;
         b[i].vz += 0.5 * b[i].az * dt;
@@ -326,6 +335,7 @@ static void step_leapfrog(Planet b[], double dt)
 
 static void recenter(Planet b[])
 {
+    ZoneScopedN("recenter");
     double cx = 0, cy = 0, cz = 0, M = 0;
     for (int i = 0; i < NUM_BODIES; ++i) {
         cx += b[i].x * b[i].mass;
@@ -349,6 +359,7 @@ static void recenter(Planet b[])
 
 double random_double(double min, double max)
 {
+    ZoneScopedN("random_double");
     double range = (max - min);
     double div = RAND_MAX / range;
     return min + (rand() / div);
@@ -356,6 +367,7 @@ double random_double(double min, double max)
 
 int main(void)
 {
+    tracy::SetThreadName("main_thread");
     srand(time(NULL));
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
@@ -403,7 +415,7 @@ int main(void)
     const double FIXED_DT = 0.0002;
     double accumulator = 0.0;
     Uint32 prev = SDL_GetTicks();
-
+    
     while (running) {
         FrameMark;
         while (SDL_PollEvent(&ev))
