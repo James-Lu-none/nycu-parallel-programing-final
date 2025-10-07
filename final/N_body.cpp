@@ -4,6 +4,9 @@
 #include <pthread.h>
 #include <ctime>
 #include <cstdlib>
+
+#include "tracy/public/tracy/TracyOpenCL.hpp"
+
 using namespace std;
 
 #define WIDTH   1200
@@ -402,6 +405,7 @@ int main(void)
     Uint32 prev = SDL_GetTicks();
 
     while (running) {
+        FrameMark;
         while (SDL_PollEvent(&ev))
             if (ev.type == SDL_QUIT) running = 0;
 
