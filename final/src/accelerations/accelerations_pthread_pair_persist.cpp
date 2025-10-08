@@ -14,6 +14,68 @@ typedef struct
 
 static Worker *workers = NULL;
 
+typedef struct
+{
+    pthread_t thread;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    bool hasWork;
+    bool exit;
+    AccelerationArgs args;
+} Worker;
+
+static void *accelerations_thread(void *arg)
+{
+    Worker *worker = (Worker *)arg;
+    AccelerationArgs *A = &worker->args;
+    
+    while (1)
+    {
+        pthread_mutex_lock(&worker->mutex);
+        while (!worker->hasWork && !worker->exit)
+            pthread_cond_wait(&worker->cond, &worker->mutex);
+        bool shouldExit = worker->exit;
+        worker->hasWork = false;
+        pthread_mutex_unlock(&worker->mutex);
+
+        if (shouldExit)
+            break;
+
+        const Planet *b = A->b;
+        int t_id = A->t_id;
+        int t_N = A->t_N;
+        double *ax = A->t_ax;
+        double *ay = A->t_ay;
+        double *az = A->t_az;
+
+        int chunk = (NUM_BODIES + t_N - 1) / t_N;
+        int i_start = t_id * chunk;
+        int i_end = (i_start + chunk < NUM_BODIES) ? (i_start + chunk) : NUM_BODIES;
+
+        for (int i = i_start; i < i_end; ++i)
+        {
+            for (int j = 0; j < NUM_BODIES; ++j)
+            {
+                double dx = b[j].x - b[i].x;
+                double dy = b[j].y - b[i].y;
+                double dz = b[j].z - b[i].z;
+                double dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
+                double dist = sqrt(dist2);
+
+                double F = (G * b[i].mass * b[j].mass) / dist2;
+                double fx = F * dx / dist;
+                double fy = F * dy / dist;
+                double fz = F * dz / dist;
+
+                ax[i] += fx / b[i].mass;
+                ay[i] += fy / b[i].mass;
+                az[i] += fz / b[i].mass;
+            }
+        }
+    }
+    return NULL;
+}
+
 void init_workers(void)
 {
     workers = (Worker *)calloc(NUM_THREADS, sizeof(Worker));
