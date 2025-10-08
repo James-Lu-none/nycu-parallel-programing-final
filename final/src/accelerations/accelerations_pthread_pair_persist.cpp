@@ -28,27 +28,33 @@ static void *accelerations_thread(void *arg)
 {
     Worker *worker = (Worker *)arg;
     AccelerationArgs *A = &worker->args;
+    char threadName[32];
+    snprintf(threadName, sizeof(threadName), "Worker_%d", A->t_id);
+    tracy::SetThreadName(threadName);
     printf("Thread %d initialized\n", A->t_id);
     while (1)
     {
-        pthread_mutex_lock(&worker->mutex);
-        printf("Thread %d entered critical session\n", A->t_id);
-        while (!worker->hasWork && !worker->exit)
         {
-            printf("Thread %d has no work and waiting to be signaled\n", A->t_id);
-            pthread_cond_wait(&worker->cond, &worker->mutex);
-        }
-        if (worker->exit)
-        {
-            printf("Thread %d exiting\n", A->t_id);
+            ZoneScopedN("wait_for_work");
+            pthread_mutex_lock(&worker->mutex);
+            printf("Thread %d entered critical session\n", A->t_id);
+            while (!worker->hasWork && !worker->exit)
+            {
+                printf("Thread %d has no work and waiting to be signaled\n", A->t_id);
+                pthread_cond_wait(&worker->cond, &worker->mutex);
+            }
+            if (worker->exit)
+            {
+                printf("Thread %d exiting\n", A->t_id);
+                pthread_mutex_unlock(&worker->mutex);
+                break;
+            }
+            printf("Thread %d resetting hasWork flag and starting work\n", A->t_id);
+            worker->hasWork = false;
+            worker->done = false;
             pthread_mutex_unlock(&worker->mutex);
-            break;
         }
-        printf("Thread %d resetting hasWork flag and starting work\n", A->t_id);
-        worker->hasWork = false;
-        worker->done = false;
-        pthread_mutex_unlock(&worker->mutex);
-
+        
         const Planet *b = A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
@@ -60,32 +66,37 @@ static void *accelerations_thread(void *arg)
         int i_start = t_id * chunk;
         int i_end = (i_start + chunk < NUM_BODIES) ? (i_start + chunk) : NUM_BODIES;
 
-        for (int i = i_start; i < i_end; ++i)
         {
-            for (int j = 0; j < NUM_BODIES; ++j)
+            ZoneScopedN("compute_accelerations");
+            for (int i = i_start; i < i_end; ++i)
             {
-                double dx = b[j].x - b[i].x;
-                double dy = b[j].y - b[i].y;
-                double dz = b[j].z - b[i].z;
-                double dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
-                double dist = sqrt(dist2);
+                for (int j = 0; j < NUM_BODIES; ++j)
+                {
+                    double dx = b[j].x - b[i].x;
+                    double dy = b[j].y - b[i].y;
+                    double dz = b[j].z - b[i].z;
+                    double dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
+                    double dist = sqrt(dist2);
 
-                double F = (G * b[i].mass * b[j].mass) / dist2;
-                double fx = F * dx / dist;
-                double fy = F * dy / dist;
-                double fz = F * dz / dist;
+                    double F = (G * b[i].mass * b[j].mass) / dist2;
+                    double fx = F * dx / dist;
+                    double fy = F * dy / dist;
+                    double fz = F * dz / dist;
 
-                ax[i] += fx / b[i].mass;
-                ay[i] += fy / b[i].mass;
-                az[i] += fz / b[i].mass;
+                    ax[i] += fx / b[i].mass;
+                    ay[i] += fy / b[i].mass;
+                    az[i] += fz / b[i].mass;
+                }
             }
         }
-
-        pthread_mutex_lock(&worker->mutex);
-        printf("Thread %d finished work and is signaling completion to main thread\n", A->t_id);
-        worker->done = true;
-        pthread_cond_signal(&worker->cond_done);
-        pthread_mutex_unlock(&worker->mutex);
+        {
+            ZoneScopedN("signal_completion");
+            pthread_mutex_lock(&worker->mutex);
+            printf("Thread %d finished work and is signaling completion to main thread\n", A->t_id);
+            worker->done = true;
+            pthread_cond_signal(&worker->cond_done);
+            pthread_mutex_unlock(&worker->mutex);
+        }
     }
     return NULL;
 }
@@ -127,8 +138,6 @@ void destroy_workers(void)
 
 void accelerations(Planet b[])
 {
-    ZoneScopedN("accelerations_parallel");
-
     int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
 
     double **t_ax = (double **)malloc(sizeof(double *) * t_N);
@@ -150,41 +159,49 @@ void accelerations(Planet b[])
         b[i].ax = b[i].ay = b[i].az = 0.0;
 
     // Wake up all workers
-    printf("====== Wake up all workers =====\n");
-    for (int t = 0; t < t_N; ++t)
     {
-        pthread_mutex_lock(&workers[t].mutex);
-        workers[t].hasWork = true;
-        workers[t].done = false;
-        pthread_cond_signal(&workers[t].cond);
-        pthread_mutex_unlock(&workers[t].mutex);
-    }
-
-    for (int t = 0; t < t_N; ++t)
-    {
-        pthread_mutex_lock(&workers[t].mutex);
-        while (!workers[t].done)
-            pthread_cond_wait(&workers[t].cond_done, &workers[t].mutex);
-        printf("***** thread %d is done! *****\n", t);
-        pthread_mutex_unlock(&workers[t].mutex);
-    }
-    printf("===== all threads are done! merging result =====\n");
-
-    // Merge results
-    for (int t = 0; t < t_N; ++t)
-    {
-        for (int i = 0; i < NUM_BODIES; ++i)
+        ZoneScopedN("wake_up_workers");
+        printf("====== Wake up all workers =====\n");
+        for (int t = 0; t < t_N; ++t)
         {
-            b[i].ax += t_ax[t][i];
-            b[i].ay += t_ay[t][i];
-            b[i].az += t_az[t][i];
+            pthread_mutex_lock(&workers[t].mutex);
+            workers[t].hasWork = true;
+            workers[t].done = false;
+            pthread_cond_signal(&workers[t].cond);
+            pthread_mutex_unlock(&workers[t].mutex);
         }
-        free(t_ax[t]);
-        free(t_ay[t]);
-        free(t_az[t]);
     }
+    {
+        ZoneScopedN("wait_for_workers");
+        printf("====== Wait for all workers to be done =====\n");
+        for (int t = 0; t < t_N; ++t)
+        {
+            pthread_mutex_lock(&workers[t].mutex);
+            while (!workers[t].done)
+                pthread_cond_wait(&workers[t].cond_done, &workers[t].mutex);
+            printf("***** thread %d is done! *****\n", t);
+            pthread_mutex_unlock(&workers[t].mutex);
+        }
+        printf("===== all threads are done! merging result =====\n");
+    }
+    
+    {
+        ZoneScopedN("merge_results");
+        for (int t = 0; t < t_N; ++t)
+        {
+            for (int i = 0; i < NUM_BODIES; ++i)
+            {
+                b[i].ax += t_ax[t][i];
+                b[i].ay += t_ay[t][i];
+                b[i].az += t_az[t][i];
+            }
+            free(t_ax[t]);
+            free(t_ay[t]);
+            free(t_az[t]);
+        }
 
-    free(t_ax);
-    free(t_ay);
-    free(t_az);
+        free(t_ax);
+        free(t_ay);
+        free(t_az);
+    }
 }
