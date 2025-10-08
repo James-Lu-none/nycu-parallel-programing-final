@@ -58,7 +58,7 @@ void accelerations(Planet b[])
     int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
-    AccelerationArgsV1 *args = (AccelerationArgsV1 *)malloc(sizeof(AccelerationArgsV1) * t_N);
+    AccelerationArgs *args = (AccelerationArgs *)malloc(sizeof(AccelerationArgs) * t_N);
 
     double **t_ax = (double **)malloc(sizeof(double *) * t_N);
     double **t_ay = (double **)malloc(sizeof(double *) * t_N);
