@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include <cmath>
 
 void accelerations(Planet b[])
 {
