@@ -34,26 +34,23 @@ static void *accelerations_thread(void *arg)
     // printf("Thread %d initialized\n", A->t_id);
     while (1)
     {
+        pthread_mutex_lock(&worker->mutex);
+        // printf("Thread %d entered critical session\n", A->t_id);
+        while (!worker->hasWork && !worker->exit)
         {
-            ZoneScopedN("wait_for_work");
-            pthread_mutex_lock(&worker->mutex);
-            // printf("Thread %d entered critical session\n", A->t_id);
-            while (!worker->hasWork && !worker->exit)
-            {
-                // printf("Thread %d has no work and waiting to be signaled\n", A->t_id);
-                pthread_cond_wait(&worker->cond, &worker->mutex);
-            }
-            if (worker->exit)
-            {
-                // printf("Thread %d exiting\n", A->t_id);
-                pthread_mutex_unlock(&worker->mutex);
-                break;
-            }
-            // printf("Thread %d resetting hasWork flag and starting work\n", A->t_id);
-            worker->hasWork = false;
-            worker->done = false;
-            pthread_mutex_unlock(&worker->mutex);
+            // printf("Thread %d has no work and waiting to be signaled\n", A->t_id);
+            pthread_cond_wait(&worker->cond, &worker->mutex);
         }
+        if (worker->exit)
+        {
+            // printf("Thread %d exiting\n", A->t_id);
+            pthread_mutex_unlock(&worker->mutex);
+            break;
+        }
+        // printf("Thread %d resetting hasWork flag and starting work\n", A->t_id);
+        worker->hasWork = false;
+        worker->done = false;
+        pthread_mutex_unlock(&worker->mutex);
         
         const Planet *b = A->b;
         int t_id = A->t_id;
