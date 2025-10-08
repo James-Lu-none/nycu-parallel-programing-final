@@ -1,5 +1,16 @@
 # parallel programming implementation for Three‑Body Problem Simulation
 
+## build and run
+
+```bash
+cd final
+mkdir build && cd build
+# ACCEL_VARIANT can be one of: serial, pthread, pthread_pair, pthread_pair_persist
+cmake -DACCEL_VARIANT=pthread_pair_persist ..
+make
+./N_body
+```
+
 ## accelerations_thread_v1
 
 In accelerations_thread_v1, the original iteration on NUM_BODIES is divided to NUM_THREADS to perform parallel acceleration calculation,
