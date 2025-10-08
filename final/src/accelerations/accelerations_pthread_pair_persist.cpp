@@ -15,6 +15,7 @@ typedef struct
     pthread_t thread;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
+    pthread_cond_t cond_done;
     bool hasWork;
     bool exit;
     bool done;
@@ -83,7 +84,7 @@ static void *accelerations_thread(void *arg)
         pthread_mutex_lock(&worker->mutex);
         printf("Thread %d finished work and is signaling completion to main thread\n", A->t_id);
         worker->done = true;
-        pthread_cond_signal(&worker->cond);
+        pthread_cond_signal(&worker->cond_done);
         pthread_mutex_unlock(&worker->mutex);
     }
     return NULL;
@@ -91,22 +92,25 @@ static void *accelerations_thread(void *arg)
 
 void init_workers(void)
 {
-    workers = (Worker *)calloc(NUM_THREADS, sizeof(Worker));
-    for (int i = 0; i < NUM_THREADS; i++)
+    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    workers = (Worker *)calloc(t_N, sizeof(Worker));
+    for (int i = 0; i < t_N; i++)
     {
         pthread_mutex_init(&workers[i].mutex, NULL);
         pthread_cond_init(&workers[i].cond, NULL);
+        pthread_cond_init(&workers[i].cond_done, NULL);
         workers[i].hasWork = false;
         workers[i].exit = false;
         workers[i].args.t_id = i;
-        workers[i].args.t_N = NUM_THREADS;
+        workers[i].args.t_N = t_N;
         pthread_create(&workers[i].thread, NULL, accelerations_thread, &workers[i]);
     }
 }
 
 void destroy_workers(void)
 {
-    for (int i = 0; i < NUM_THREADS; i++)
+    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    for (int i = 0; i < t_N; i++)
     {
         pthread_mutex_lock(&workers[i].mutex);
         workers[i].exit = true;
@@ -115,6 +119,7 @@ void destroy_workers(void)
         pthread_join(workers[i].thread, NULL);
         pthread_mutex_destroy(&workers[i].mutex);
         pthread_cond_destroy(&workers[i].cond);
+        pthread_cond_destroy(&workers[i].cond_done);
     }
     free(workers);
     workers = NULL;
@@ -145,28 +150,25 @@ void accelerations(Planet b[])
         b[i].ax = b[i].ay = b[i].az = 0.0;
 
     // Wake up all workers
+    printf("====== Wake up all workers =====\n");
     for (int t = 0; t < t_N; ++t)
     {
         pthread_mutex_lock(&workers[t].mutex);
         workers[t].hasWork = true;
+        workers[t].done = false;
         pthread_cond_signal(&workers[t].cond);
         pthread_mutex_unlock(&workers[t].mutex);
     }
 
-    bool all_done = false;
-    while (!all_done)
+    for (int t = 0; t < t_N; ++t)
     {
-        all_done = true;
-        for (int t = 0; t < t_N; ++t)
-        {
-            pthread_mutex_lock(&workers[t].mutex);
-            while (!workers[t].done)
-                pthread_cond_wait(&workers[t].cond, &workers[t].mutex);
-            pthread_mutex_unlock(&workers[t].mutex);
-        }
-        for (int t = 0; t < t_N; ++t)
-            all_done = all_done && workers[t].done;
+        pthread_mutex_lock(&workers[t].mutex);
+        while (!workers[t].done)
+            pthread_cond_wait(&workers[t].cond_done, &workers[t].mutex);
+        printf("***** thread %d is done! *****\n", t);
+        pthread_mutex_unlock(&workers[t].mutex);
     }
+    printf("===== all threads are done! merging result =====\n");
 
     // Merge results
     for (int t = 0; t < t_N; ++t)
