@@ -1,10 +1,3 @@
-#include <cstdio>
-#include <cmath>
-#include <SDL2/SDL.h>
-#include <pthread.h>
-#include <ctime>
-#include <cstdlib>
-
 #include "config.hpp"
 
 using namespace std;

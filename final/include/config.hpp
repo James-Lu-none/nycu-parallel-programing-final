@@ -1,5 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <cmath>
+#include <cstdio>
+#include <SDL2/SDL.h>
+#include <pthread.h>
+#include <ctime>
+#include <cstdlib>
 #include "planet.hpp"
 #include "accelerations.hpp"
 #include "Tracy.hpp"
