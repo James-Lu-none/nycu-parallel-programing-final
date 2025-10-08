@@ -60,6 +60,116 @@ Thread 2: i_start=50, i_end=75, calc_count=2500
 Thread 3: i_start=75, i_end=100, calc_count=2500
 ```
 
+## error: malloc(): unaligned fastbin chunk detected
+
+```
+====== Wake up all workers =====
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+Thread 0 resetting hasWork flag and starting work
+Thread 0 finished work and is signaling completion to main thread
+Thread 0 entered critical session
+Thread 0 has no work and waiting to be signaled
+Thread 2 resetting hasWork flag and starting work
+Thread 2 finished work and is signaling completion to main thread
+Thread 2 entered critical session
+Thread 2 has no work and waiting to be signaled
+***** thread 2 is done! *****
+===== all threads are done! merging result =====
+Thread 1 resetting hasWork flag and starting work
+Thread 1 finished work and is signaling completion to main thread
+Thread 1 entered critical session
+Thread 1 has no work and waiting to be signaled
+====== Wake up all workers =====
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+Thread 0 resetting hasWork flag and starting work
+Thread 0 finished work and is signaling completion to main thread
+Thread 1 resetting hasWork flag and starting work
+Thread 1 finished work and is signaling completion to main thread
+Thread 1 entered critical session
+Thread 1 has no work and waiting to be signaled
+Thread 0 entered critical session
+Thread 0 has no work and waiting to be signaled
+Thread 2 resetting hasWork flag and starting work
+Thread 2 finished work and is signaling completion to main thread
+Thread 2 entered critical session
+Thread 2 has no work and waiting to be signaled
+***** thread 2 is done! *****
+===== all threads are done! merging result =====
+====== Wake up all workers =====
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+Thread 2 resetting hasWork flag and starting work
+Thread 1 resetting hasWork flag and starting work
+Thread 1 finished work and is signaling completion to main thread
+Thread 1 entered critical session
+Thread 1 has no work and waiting to be signaled
+Thread 2 finished work and is signaling completion to main thread
+Thread 2 entered critical session
+Thread 2 has no work and waiting to be signaled
+Thread 0 resetting hasWork flag and starting work
+Thread 0 finished work and is signaling completion to main thread
+Thread 0 entered critical session
+Thread 0 has no work and waiting to be signaled
+***** thread 2 is done! *****
+===== all threads are done! merging result =====
+====== Wake up all workers =====
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+***** thread 2 is done! *****
+Thread 0 resetting hasWork flag and starting work
+Thread 0 finished work and is signaling completion to main thread
+Thread 1 resetting hasWork flag and starting work
+Thread 1 finished work and is signaling completion to main thread
+Thread 1 entered critical session
+Thread 1 has no work and waiting to be signaled
+Thread 0 entered critical session
+Thread 0 has no work and waiting to be signaled
+Thread 2 resetting hasWork flag and starting work
+Thread 2 finished work and is signaling completion to main thread
+Thread 2 entered critical session
+Thread 2 has no work and waiting to be signaled
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+***** thread 2 is done! *****
+===== all threads are done! merging result =====
+====== Wake up all workers =====
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+Thread 2 resetting hasWork flag and starting work
+Thread 1 resetting hasWork flag and starting work
+Thread 1 finished work and is signaling completion to main thread
+Thread 2 finished work and is signaling completion to main thread
+Thread 2 entered critical session
+Thread 2 has no work and waiting to be signaled
+Thread 1 entered critical session
+Thread 1 has no work and waiting to be signaled
+***** thread 2 is done! *****
+===== all threads are done! merging result =====
+Thread 0 resetting hasWork flag and starting work
+Thread 0 finished work and is signaling completion to main thread
+Thread 0 entered critical session
+Thread 0 has no work and waiting to be signaled
+====== Wake up all workers =====
+***** thread 0 is done! *****
+***** thread 1 is done! *****
+Thread 2 resetting hasWork flag and starting work
+Thread 1 resetting hasWork flag and starting work
+Thread 1 finished work and is signaling completion to main thread
+Thread 1 entered critical session
+Thread 1 has no work and waiting to be signaled
+Thread 2 finished work and is signaling completion to main thread
+Thread 2 entered critical session
+Thread 2 has no work and waiting to be signaled
+Thread 0 resetting hasWork flag and starting work
+Thread 0 finished work and is signaling completion to main thread
+Thread 0 entered critical session
+Thread 0 has no work and waiting to be signaled
+***** thread 2 is done! *****
+===== all threads are done! merging result =====
+```
+
 ## Three‑Body Problem Simulation
 
 A real‑time visualisation of the famous planar **figure‑8 three‑body orbit**. The program integrates Newtonian gravity with a **leapfrog (velocity‑Verlet) scheme**, recenters the camera on the instantaneous centre of mass, and leaves colourful trails behind each body.
