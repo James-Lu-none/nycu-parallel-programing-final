@@ -12,8 +12,6 @@ typedef struct
 
 #define NUM_THREADS 4 // or whatever you had
 
-static Worker *workers = NULL;
-
 typedef struct
 {
     pthread_t thread;
@@ -23,6 +21,8 @@ typedef struct
     bool exit;
     AccelerationArgs args;
 } Worker;
+
+static Worker *workers = NULL;
 
 static void *accelerations_thread(void *arg)
 {
