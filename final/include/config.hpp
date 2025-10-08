@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include "planet.hpp"
 #include "accelerations.hpp"
-#include "Tracy.hpp"
+#include "tracy/Tracy.hpp"
 
 #define WIDTH 1200
 #define HEIGHT 800

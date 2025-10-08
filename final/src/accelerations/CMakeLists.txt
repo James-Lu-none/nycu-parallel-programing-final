@@ -16,5 +16,5 @@ endif()
 target_include_directories(accelerations PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
-
+target_link_libraries(accelerations PUBLIC TracyClient)
 target_compile_definitions(accelerations PUBLIC TRACY_ENABLE=1)

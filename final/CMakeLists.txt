@@ -6,8 +6,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SDL2 REQUIRED)
 
-include_directories(${PROJECT_SOURCE_DIR}/include/tracy/public/tracy)
-include_directories(${PROJECT_SOURCE_DIR}/include/tracy/public)
+include(FetchContent)
+
+FetchContent_Declare(
+    tracy
+    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+    GIT_TAG v0.12.2
+)
+
+FetchContent_MakeAvailable(tracy)
+
+target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE=1)
 
 add_executable(N_body src/N_body.cpp)
 
@@ -18,9 +27,6 @@ target_link_libraries(N_body
     accelerations
     m
 )
-
-add_library(TracyClient STATIC ${PROJECT_SOURCE_DIR}/include/tracy/public/TracyClient.cpp)
-target_compile_definitions(TracyClient PUBLIC TRACY_ENABLE=1)
 
 add_subdirectory(src/accelerations)
 
