@@ -10,8 +10,6 @@ typedef struct
     double *t_az;
 } AccelerationArgs;
 
-#define NUM_THREADS 4 // or whatever you had
-
 typedef struct
 {
     pthread_t thread;
@@ -19,6 +17,7 @@ typedef struct
     pthread_cond_t cond;
     bool hasWork;
     bool exit;
+    bool done;
     AccelerationArgs args;
 } Worker;
 
@@ -28,18 +27,26 @@ static void *accelerations_thread(void *arg)
 {
     Worker *worker = (Worker *)arg;
     AccelerationArgs *A = &worker->args;
-    
+    printf("Thread %d initialized\n", A->t_id);
     while (1)
     {
         pthread_mutex_lock(&worker->mutex);
+        printf("Thread %d entered critical session\n", A->t_id);
         while (!worker->hasWork && !worker->exit)
+        {
+            printf("Thread %d has no work and waiting to be signaled\n", A->t_id);
             pthread_cond_wait(&worker->cond, &worker->mutex);
-        bool shouldExit = worker->exit;
-        worker->hasWork = false;
-        pthread_mutex_unlock(&worker->mutex);
-
-        if (shouldExit)
+        }
+        if (worker->exit)
+        {
+            printf("Thread %d exiting\n", A->t_id);
+            pthread_mutex_unlock(&worker->mutex);
             break;
+        }
+        printf("Thread %d resetting hasWork flag and starting work\n", A->t_id);
+        worker->hasWork = false;
+        worker->done = false;
+        pthread_mutex_unlock(&worker->mutex);
 
         const Planet *b = A->b;
         int t_id = A->t_id;
@@ -72,6 +79,12 @@ static void *accelerations_thread(void *arg)
                 az[i] += fz / b[i].mass;
             }
         }
+
+        pthread_mutex_lock(&worker->mutex);
+        printf("Thread %d finished work and is signaling completion to main thread\n", A->t_id);
+        worker->done = true;
+        pthread_cond_signal(&worker->cond);
+        pthread_mutex_unlock(&worker->mutex);
     }
     return NULL;
 }
@@ -140,20 +153,20 @@ void accelerations(Planet b[])
         pthread_mutex_unlock(&workers[t].mutex);
     }
 
-    bool done;
-    do
+    bool all_done = false;
+    while (!all_done)
     {
-        done = true;
+        all_done = true;
         for (int t = 0; t < t_N; ++t)
         {
             pthread_mutex_lock(&workers[t].mutex);
-            if (workers[t].hasWork)
-                done = false;
+            while (!workers[t].done)
+                pthread_cond_wait(&workers[t].cond, &workers[t].mutex);
             pthread_mutex_unlock(&workers[t].mutex);
         }
-        if (!done)
-            sched_yield();
-    } while (!done);
+        for (int t = 0; t < t_N; ++t)
+            all_done = all_done && workers[t].done;
+    }
 
     // Merge results
     for (int t = 0; t < t_N; ++t)
