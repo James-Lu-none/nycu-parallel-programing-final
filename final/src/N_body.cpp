@@ -200,8 +200,11 @@ int main(void)
     const double FIXED_DT = 0.0002;
     double accumulator = 0.0;
     Uint32 prev = SDL_GetTicks();
-    
-    while (running) {
+    #ifdef INIT_REQUIRED
+        init_workers();
+    #endif
+    while (running)
+    {
         FrameMark;
         while (SDL_PollEvent(&ev))
             if (ev.type == SDL_QUIT) running = 0;
@@ -232,7 +235,9 @@ int main(void)
         SDL_UpdateWindowSurface(win);
         SDL_Delay(16);
     }
-
+    #ifdef INIT_REQUIRED
+        destroy_workers();
+    #endif
     SDL_DestroyWindow(win);
     SDL_Quit();
     return 0;
