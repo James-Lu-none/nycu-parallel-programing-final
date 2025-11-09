@@ -1,0 +1,263 @@
+\documentclass[sigconf]{acmart}
+% \documentclass[manuscript, screen, review]{acmart}
+\usepackage{graphicx}
+\usepackage{multirow}
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+\begin{document}
+
+\title{Parallelization of N-body Simulation}
+
+\author{Kai-Hsun Lu}
+% \orcid{314581029}
+\affiliation{%
+  \institution{National Yang Ming Chiao Tung University}
+  \city{Hsinchu}
+  \country{Taiwan}
+}
+\email{jameslu.ii14@nycu.edu.tw}
+  
+\author{Wei-Lin Wen}
+\affiliation{%
+  \institution{National Yang Ming Chiao Tung University}
+  \city{Hsinchu}
+  \country{Taiwan}
+}
+\email{weilin.cs14@nycu.edu.tw}
+
+\author{Wei-Ting Yu}
+% \authornote{314551127}
+\affiliation{%
+  \institution{National Yang Ming Chiao Tung University}
+  \city{Hsinchu}
+  \country{Taiwan}
+}
+\email{ywt.cs14@nycu.edu.tw}
+
+% this line removes ACM reference format
+\settopmatter{printacmref=false}
+% this line removes  ACM copyright/permission block
+\renewcommand\footnotetextcopyrightpermission[1]{}
+
+\maketitle
+
+\section{Introduction / Motivation}
+The motivation of this project is to accelerate a physical simulation using various parallel programming techniques and to theoretically validate the expected performance improvements with practical results, so we selected the three-body simulation as a starting point and extended it to the more general N-body simulation.
+
+The N-body problem models the evolution of a system of particles under mutual forces, however, the computational complexity of direct pairwise force evaluation is O($N^2$), making simulations with large numbers of particles computationally expensive.
+
+To address this challenge, we aim to significantly accelerate N-body simulations and analyze the resulting performance gains with modern compute devices and various parallel programming techniques.
+
+\section{Statement of the Problem}
+\textbf{Application chosen:} N-body simulation (gravitational interactions). \\
+
+\noindent \textbf{Reason for choice:}
+\begin{enumerate}
+    \item The computation workload in N-body simulation is highly parallelizable by nature, allowing the use of different optimization approaches.
+    \item The computational complexity of O($N^2$) makes it a meaningful challenge, providing a strong motivation to explore parallelism, vectorization, and efficient workload distribution.
+    \item The original implementation uses SDL for rendering, which introduces an opportunity to further investigate rendering parallelization and improve visualization performance alongside the computation.
+\end{enumerate}
+
+\section{Proposed Approaches}
+We will implement and compare multiple parallelization strategies for N-body simulation and introduce Tracy instrumentation methods to measure performance characteristics, identify bottlenecks, and evaluate the effectiveness of different parallel computing approaches:
+\begin{enumerate}
+    \item Accelerations:
+    \begin{itemize}
+        \item serial: orignal implementation.
+        \item Pthread pair: Directly parallelize pairwise force computations.
+        \item Pthread balanced: Directly parallelize but dont compute by pairwise.
+        \item Pthread interleaved: parallelize pairwise force computations but with interleaved index
+        \item Mutex versions: extend all above pthread implementations to persist threads and synchronize shared data using mutexes.
+        \item SIMD versions: apply SIMD intrinsics to all above implementations to exploit data-level parallelism.
+        \item Task based parallelizm
+        \item GPU acceleration: offload force computations to GPU using CUDA/OpenCL for massive parallelism.
+    \end{itemize}
+    \item step leapfrog integration:
+    \begin{itemize}
+        \item Identical parallelization strategies as above
+    \end{itemize}
+    \item rendering:
+    \begin{itemize}
+        \item SDL (Simple DirectMedia Layer): The original implementation uses SDL to visualize particle positions and trajectories.
+        \item While SDL rendering functions generally must be executed on the main thread and are not inherently parallelized, we can still parallelize certain pre-rendering tasks, such as offscreen buffer generation, where frames are computed in a memory buffer in parallel before being displayed, if time permits.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Block Diagram / System Architecture}
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.5\textwidth]{system_architecture.png}  % or .jpg, .pdf
+\caption{System Architecture of the N-Body Simulation}
+\label{fig:system_architecture}
+\end{figure}
+
+\subsection{Component Functions}
+\begin{enumerate}
+    \item \textbf{Initialization Components:} 
+    \begin{itemize}
+        \item \textbf{Planet Initialization:} Sets up N bodies with random positions and velocities around a center point
+        \item \textbf{Trail Initialization:} Creates empty trail buffers for each body to track motion history
+        \item \textbf{SDL Setup:} Initializes graphics window and surface
+    \end{itemize}
+    
+    \item \textbf{Physics Integration Components:}
+    \begin{itemize}
+        \item \textbf{\texttt{step\_leapfrog()}:} Implements leapfrog integration algorithm with kick-drift-kick pattern: updates velocities by half-step, updates positions, recalculates accelerations, then updates velocities by another half-step
+        \item \textbf{\texttt{accelerations()}:} Computes gravitational forces between all bodies
+    \end{itemize}
+    
+    \item \textbf{Coordinate Management Components:}
+    \begin{itemize}
+        \item \textbf{\texttt{recenter()}:} Calculates center of mass and shifts all bodies so the center of mass is at screen center, preventing the system from drifting off-screen
+    \end{itemize}
+    
+    \item \textbf{Trail Management Components:}
+    \begin{itemize}
+        \item \textbf{\texttt{trail\_push()}:} Adds new position to circular trail buffer only if body moved at least \texttt{MIN\_DIST} from last recorded position
+        \item \textbf{\texttt{trail\_draw()}:} Renders motion trails with depth-based brightness
+    \end{itemize}
+    
+    \item \textbf{Rendering Components:}
+    \begin{itemize}
+        \item \textbf{\texttt{fill\_circle()}:} Draws planets as filled circles with perspective scaling and brightness based on z-depth
+        \item \textbf{Screen Update:} Clears screen, draws all trails and planets, updates display
+    \end{itemize}
+    
+    \item \textbf{Event Handling Components:}
+    \begin{itemize}
+        \item \textbf{\texttt{SDL\_PollEvent()}:} Checks for quit events (window close) and handles camera control inputs for adjusting spherical coordinates $(r, \theta, \varphi)$
+    \end{itemize}
+    
+    \item \textbf{Time Management Components:}
+    \begin{itemize}
+        \item \textbf{Frame Timer:} Uses \texttt{SDL\_GetTicks()} to measure real elapsed time
+        \item \textbf{Fixed Timestep Accumulator:} Ensures physics runs at consistent \texttt{FIXED\_DT} intervals regardless of frame rate
+    \end{itemize}
+\end{enumerate}
+\subsection{Component Interactions}
+
+\begin{enumerate}
+
+    \item \textbf{Physics Update Loop:} Calculate \texttt{frame\_dt} and add to accumulator and while accumulator $\geq$ dt, call \\ \texttt{step\_leapfrog(bodies, FIXED\_DT)} which updates velocities (half-step), positions, accelerations, and velocities (half-step), then decrease accumulator
+    
+    \item \textbf{Coordinate Management:} \texttt{recenter(bodies)} calculates center of mass and shifts all bodies to screen center
+    \item \textbf{Depth Effect:} Both \texttt{fill\_circle()} and \texttt{trail\_draw()} use z-coordinates to create perspective through size scaling and brightness adjustment
+    \item \textbf{Trail Recording:} For each body, \texttt{trail\_push()} adds current position to trail buffer
+    
+    \item \textbf{Rendering:} Clear screen, then for each body call \texttt{trail\_draw()} and \texttt{fill\_circle()}, finally \texttt{SDL\_UpdateWindowSurface()}
+
+    \item \textbf{Tracy Integration:} \texttt{ZoneScopedN()} calls throughout enable performance profiling without affecting logic
+\end{enumerate}
+
+\subsection{Mathematical Formulations}
+
+\textbf{Leapfrog Integration (kick-drift-kick pattern):}
+\begin{align}
+    \mathbf{v}_{i+1/2} &= \mathbf{v}_i + \frac{1}{2}\mathbf{a}_i \Delta t \\
+    \mathbf{x}_{i+1} &= \mathbf{x}_i + \mathbf{v}_{i+1/2} \Delta t \\
+    \mathbf{a}_{i+1} &= f(\mathbf{x}_{i+1}) \\
+    \mathbf{v}_{i+1} &= \mathbf{v}_{i+1/2} + \frac{1}{2}\mathbf{a}_{i+1} \Delta t
+\end{align}
+
+\textbf{Center of Mass Calculation:}
+\begin{align}
+    \mathbf{r}_{COM} &= \frac{\sum_{i=1}^{N} m_i \mathbf{r}_i}{\sum_{i=1}^{N} m_i} \\
+    \mathbf{r}_i' &= \mathbf{r}_i + (\mathbf{r}_{screen} - \mathbf{r}_{COM})
+\end{align}
+
+\textbf{Spherical Camera System:} The camera position is defined in spherical coordinates $(r, \theta, \varphi)$ where $r$ is the radial distance, $\theta$ is the azimuthal angle, and $\varphi$ is the polar angle.
+
+Conversion to Cartesian coordinates:
+\begin{align}
+    x_{cam} &= r \cos\theta \cos\varphi \\
+    y_{cam} &= r \sin\theta \cos\varphi \\
+    z_{cam} &= r \sin\varphi
+\end{align}
+
+\textbf{3D to 2D Projection:} Map body positions to camera view using perspective projection:
+\begin{align}
+    \mathbf{r}_{rel} &= \mathbf{r}_i - \mathbf{r}_{cam} \\
+    x_{screen} &= \frac{f \cdot x_{rel}}{z_{rel} + d} + \frac{W}{2} \\
+    y_{screen} &= \frac{f \cdot y_{rel}}{z_{rel} + d} + \frac{H}{2}
+\end{align}
+
+where $f$ is the focal length, $d$ is the view distance, and $(W, H)$ are screen dimensions.
+
+\section{Language Selection}
+\begin{itemize}
+    \item \textbf{C++ with pthread} for shared-memory multiprocessing, providing efficiency and fine-grained control over memory and performance with support for instrumentation tools like Tracy.
+    \item \textbf{CUDA} for GPU acceleration, well-suited for massively parallel workloads like N-body simulations by directly mapping particles to GPU threads for concurrent force calculations.
+\end{itemize}
+
+\section{Related Work}
+\begin{itemize}
+    \item Francesco, L (2025). C-projects [Source code]. \\ GitHub. https://github.com/mrparsing/C-Projects
+    \item Bartosz, Taudul (2025). tracy [Source code]. \\ GitHub. https://github.com/wolfpld/tracy
+    \item Rein van den Boomgaard (2017). Image Processing and Computer Vision, The Pinhole Camera
+\end{itemize}
+
+\section{Expected Results}
+\begin{itemize}
+    \item Parallel results will accurately match the original implementation.
+    \item Parallel implementations are expected to outperform the serial version.
+    \item Parallel methods scale well and show speedup for different $N$ (1K, 10K, 100K bodies).
+    \item Performance assumptions match with Tracy measurements theoretically and mathematically.
+\end{itemize}
+
+\section{Timetable}
+\begin{tabular}{|c|l|}
+\hline
+\textbf{Week} & \textbf{Task} \\
+\hline
+\multirow{2}{*}{3} & 1. Literature review and project planning \\
+                   & 2. Implement baseline sequential N-body simulation \\
+% 3 & Literature review and project planning \\
+% 3 & Implement baseline sequential N-body simulation \\
+\multirow{2}{*}{4} & 1. Integrate Tracy profiling framework \\
+                   & 2. Implement pthread parallelization \\
+% 4 & Integrate Tracy profiling framework \\
+% 4 & Implement pthread parallelization \\
+5 & Optimize pthread implementation and profiling \\
+6 & Implement CUDA GPU acceleration \\
+7 & Optimize CUDA implementation and profiling \\
+8 & Implement spherical camera system \\
+9 & Performance comparison and bottleneck analysis \\
+10 & Refinement and optimization of all implementations \\
+\multirow{2}{*}{11} & 1. Run experiments, collect performance data \\
+                   & 2. Analyze results, prepare visualization \\
+% 11 & Run experiments, collect performance data \\
+% 11 & Analyze results, prepare visualization \\
+12 & Write final report and presentation \\
+\hline
+\end{tabular}
+
+\section{References}
+\begin{enumerate}
+    \item Hockney, R. W., \& Eastwood, J. W. (1988). \textit{Computer Simulation Using Particles}. CRC Press. (Leapfrog integration and N-body algorithms)
+    
+    \item NVIDIA Corporation. (2023). \textit{CUDA C++ Programming Guide}. \\ https://docs.nvidia.com/cuda/cuda-c-programming-guide/
+    
+    \item Tracy Profiler Documentation. (2024). \\ https://github.com/wolfpld/tracy/releases/latest/download/tracy.pdf
+    
+    \item Butcher, P., \& Devlin, J. (2011). \textit{Pthreads Programming: A POSIX Standard for Better Multiprocessing}. O'Reilly Media.
+    
+    \item SDL (Simple DirectMedia Layer) Documentation. (2024). Retrieved from https://wiki.libsdl.org/
+
+    \item Bermudez-Cameo, Jesus, Lopez-Nicolas, Gonzalo, Guerrero, Josechu. (2012). A Unified Framework for Line Extraction in Dioptric and Catadioptric Cameras.
+
+    \item Quinn, T., Katz, N., Stadel, J., Lake, G. (1997). Time stepping N-body simulations. https://arxiv.org/abs/astro-ph/9710043
+\end{enumerate}
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sample-base}
+
+%% If your work has an appendix, this is the place to put it.
+\appendix
+
+\end{document}
+\endinput
+%% End of file `sample-sigconf.tex'.
