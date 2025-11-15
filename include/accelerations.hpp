@@ -1,7 +1,10 @@
 #pragma once
-#include "planet.hpp"
-#include "config.hpp"
 
-void accelerations(Planet b[]);
-void init_workers(void);
-void destroy_workers(void);
+#include <cstddef>
+
+struct Planet;
+
+void accelerations_setup(Planet *bodies, std::size_t count);
+void accelerations(Planet *bodies, std::size_t count);
+void accelerations_teardown();
+

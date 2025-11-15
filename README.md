@@ -5,11 +5,33 @@
 ```bash
 cd final
 mkdir build && cd build
-# ACCEL_VARIANT can be one of: serial, pthread, pthread_pair, pthread_pair_persist
-cmake -DACCEL_VARIANT=pthread_pair_persist ..
+# ACCEL_VARIANT can be one of: serial, pthread_balanced, pthread_pair,
+#   pthread_pair_interleaved, pthread_pair_persist, simd, cuda
+cmake -DACCEL_VARIANT=simd ..
 make
-./N_body
+./N_body --bodies 128 --trail 400
 ```
+
+### Runtime options
+
+The legacy compile-time macros such as `NUM_BODIES` were replaced with command-line flags so you can experiment without rebuilds:
+
+* `--bodies <N>` – total population size (must be greater than zero).
+* `--trail <N>` – trail history length (ring-buffered per body).
+* `--raytraced` – start directly in ray-traced mode (you can toggle at runtime with the `R` key).
+
+### Choosing an acceleration backend
+
+Pick the force kernel at configure time via `ACCEL_VARIANT`:
+
+* `serial` – reference scalar C++ implementation.
+* `pthread_balanced`, `pthread_pair`, `pthread_pair_interleaved`, `pthread_pair_persist` – CPU multithreaded flavours.
+* `simd` – AVX2-enhanced single-threaded backend that vectorises the O(n²) loop in 4-body batches.
+* `cuda` – GPU implementation that offloads the pairwise loop to CUDA (requires a CUDA toolchain).
+
+### Rendering modes
+
+Press `R` during the simulation to toggle between the classic rasteriser and the new per-pixel ray tracer. The ray-traced pass casts rays from a virtual camera at `z = -view_z`, shades the planets with a directional light, and respects the body radii defined in the simulation state.
 
 ## accelerations_thread_v1
 

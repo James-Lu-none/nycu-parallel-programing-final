@@ -1,204 +1,199 @@
 #include "config.hpp"
+#include "accelerations.hpp"
+#include "planet.hpp"
+#include "tracy/Tracy.hpp"
 
-typedef struct
-{
-    const Planet *b;
-    int t_id;
-    int t_N;
-    double *t_ax;
-    double *t_ay;
-    double *t_az;
-} AccelerationArgs;
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <pthread.h>
+#include <vector>
 
-typedef struct
-{
-    pthread_t thread;
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    pthread_cond_t cond_done;
-    bool hasWork;
-    bool exit;
-    bool done;
+namespace {
+
+struct AccelerationArgs {
+    const Planet *bodies = nullptr;
+    std::size_t thread_id = 0;
+    std::size_t thread_count = 0;
+    std::size_t count = 0;
+    double *ax = nullptr;
+    double *ay = nullptr;
+    double *az = nullptr;
+};
+
+struct Worker {
+    pthread_t thread{};
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t cond_done = PTHREAD_COND_INITIALIZER;
+    bool has_work = false;
+    bool exit = false;
+    bool done = false;
     AccelerationArgs args;
-} Worker;
+};
 
-static Worker *workers = NULL;
+std::vector<Worker> workers;
+std::size_t worker_count = 0;
 
-static void *accelerations_thread(void *arg)
-{
-    Worker *worker = (Worker *)arg;
-    AccelerationArgs *A = &worker->args;
-    char threadName[32];
-    snprintf(threadName, sizeof(threadName), "Worker_%d", A->t_id);
-    tracy::SetThreadName(threadName);
-    // printf("Thread %d initialized\n", A->t_id);
-    while (1)
-    {
+void *worker_entry(void *arg) {
+    Worker *worker = static_cast<Worker *>(arg);
+    char thread_name[32];
+    std::snprintf(thread_name, sizeof(thread_name), "Worker_%zu", worker->args.thread_id);
+    tracy::SetThreadName(thread_name);
+
+    while (true) {
         pthread_mutex_lock(&worker->mutex);
-        // printf("Thread %d entered critical session\n", A->t_id);
-        while (!worker->hasWork && !worker->exit)
-        {
-            // printf("Thread %d has no work and waiting to be signaled\n", A->t_id);
+        while (!worker->has_work && !worker->exit) {
             pthread_cond_wait(&worker->cond, &worker->mutex);
         }
-        if (worker->exit)
-        {
-            // printf("Thread %d exiting\n", A->t_id);
+        if (worker->exit) {
             pthread_mutex_unlock(&worker->mutex);
             break;
         }
-        // printf("Thread %d resetting hasWork flag and starting work\n", A->t_id);
-        worker->hasWork = false;
+        worker->has_work = false;
         worker->done = false;
+        AccelerationArgs args = worker->args;
         pthread_mutex_unlock(&worker->mutex);
-        
-        const Planet *b = A->b;
-        int t_id = A->t_id;
-        int t_N = A->t_N;
-        double *ax = A->t_ax;
-        double *ay = A->t_ay;
-        double *az = A->t_az;
 
-        int chunk = (NUM_BODIES + t_N - 1) / t_N;
-        int i_start = t_id * chunk;
-        int i_end = (i_start + chunk < NUM_BODIES) ? (i_start + chunk) : NUM_BODIES;
+        const Planet *b = args.bodies;
+        const std::size_t count = args.count;
+        const std::size_t tid = args.thread_id;
+        const std::size_t thread_total = args.thread_count;
+        double *ax = args.ax;
+        double *ay = args.ay;
+        double *az = args.az;
 
-        {
-            ZoneScopedN("compute_accelerations");
-            for (int i = i_start; i < i_end; ++i)
-            {
-                for (int j = 0; j < NUM_BODIES; ++j)
-                {
-                    double dx = b[j].x - b[i].x;
-                    double dy = b[j].y - b[i].y;
-                    double dz = b[j].z - b[i].z;
-                    double dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
-                    double dist = sqrt(dist2);
+        ZoneScopedN("compute_accelerations_persist");
+        for (std::size_t i = tid; i < count; i += thread_total) {
+            for (std::size_t j = i + 1; j < count; ++j) {
+                double dx = b[j].x - b[i].x;
+                double dy = b[j].y - b[i].y;
+                double dz = b[j].z - b[i].z;
+                double dist2 = dx * dx + dy * dy + dz * dz + config::EPSILON;
+                double dist = std::sqrt(dist2);
 
-                    double F = (G * b[i].mass * b[j].mass) / dist2;
-                    double fx = F * dx / dist;
-                    double fy = F * dy / dist;
-                    double fz = F * dz / dist;
+                double F = (config::G * b[i].mass * b[j].mass) / dist2;
+                double fx = F * dx / dist;
+                double fy = F * dy / dist;
+                double fz = F * dz / dist;
 
-                    ax[i] += fx / b[i].mass;
-                    ay[i] += fy / b[i].mass;
-                    az[i] += fz / b[i].mass;
-                }
+                ax[i] += fx / b[i].mass;
+                ay[i] += fy / b[i].mass;
+                az[i] += fz / b[i].mass;
+                ax[j] -= fx / b[j].mass;
+                ay[j] -= fy / b[j].mass;
+                az[j] -= fz / b[j].mass;
             }
         }
-        {
-            ZoneScopedN("signal_completion");
-            pthread_mutex_lock(&worker->mutex);
-            // printf("Thread %d finished work and is signaling completion to main thread\n", A->t_id);
-            worker->done = true;
-            pthread_cond_signal(&worker->cond_done);
-            pthread_mutex_unlock(&worker->mutex);
-        }
+
+        pthread_mutex_lock(&worker->mutex);
+        worker->done = true;
+        pthread_cond_signal(&worker->cond_done);
+        pthread_mutex_unlock(&worker->mutex);
     }
-    return NULL;
+
+    return nullptr;
 }
 
-void init_workers(void)
-{
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
-    workers = (Worker *)calloc(t_N, sizeof(Worker));
-    for (int i = 0; i < t_N; i++)
-    {
-        pthread_mutex_init(&workers[i].mutex, NULL);
-        pthread_cond_init(&workers[i].cond, NULL);
-        pthread_cond_init(&workers[i].cond_done, NULL);
-        workers[i].hasWork = false;
-        workers[i].exit = false;
-        workers[i].args.t_id = i;
-        workers[i].args.t_N = t_N;
-        pthread_create(&workers[i].thread, NULL, accelerations_thread, &workers[i]);
+void ensure_workers(std::size_t count) {
+    std::size_t desired = std::min<std::size_t>(config::NUM_THREADS, count);
+    if (worker_count == desired && !workers.empty()) {
+        return;
+    }
+
+    if (!workers.empty()) {
+        for (auto &worker : workers) {
+            pthread_mutex_lock(&worker.mutex);
+            worker.exit = true;
+            pthread_cond_signal(&worker.cond);
+            pthread_mutex_unlock(&worker.mutex);
+            pthread_join(worker.thread, nullptr);
+            pthread_mutex_destroy(&worker.mutex);
+            pthread_cond_destroy(&worker.cond);
+            pthread_cond_destroy(&worker.cond_done);
+        }
+        workers.clear();
+    }
+
+    worker_count = desired;
+    if (worker_count == 0) {
+        return;
+    }
+
+    workers.resize(worker_count);
+    for (std::size_t i = 0; i < worker_count; ++i) {
+        Worker &worker = workers[i];
+        pthread_mutex_init(&worker.mutex, nullptr);
+        pthread_cond_init(&worker.cond, nullptr);
+        pthread_cond_init(&worker.cond_done, nullptr);
+        worker.has_work = false;
+        worker.exit = false;
+        worker.done = false;
+        worker.args.thread_id = i;
+        worker.args.thread_count = worker_count;
+        pthread_create(&worker.thread, nullptr, worker_entry, &worker);
     }
 }
 
-void destroy_workers(void)
-{
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
-    for (int i = 0; i < t_N; i++)
-    {
-        pthread_mutex_lock(&workers[i].mutex);
-        workers[i].exit = true;
-        pthread_cond_signal(&workers[i].cond);
-        pthread_mutex_unlock(&workers[i].mutex);
-        pthread_join(workers[i].thread, NULL);
-        pthread_mutex_destroy(&workers[i].mutex);
-        pthread_cond_destroy(&workers[i].cond);
-        pthread_cond_destroy(&workers[i].cond_done);
-    }
-    free(workers);
-    workers = NULL;
+} // namespace
+
+void accelerations_setup(Planet *, std::size_t count) {
+    ensure_workers(count);
 }
 
-void accelerations(Planet b[])
-{
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+void accelerations_teardown() {
+    ensure_workers(0);
+}
 
-    double **t_ax = (double **)malloc(sizeof(double *) * t_N);
-    double **t_ay = (double **)malloc(sizeof(double *) * t_N);
-    double **t_az = (double **)malloc(sizeof(double *) * t_N);
-    for (int t = 0; t < t_N; ++t)
-    {
-        t_ax[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_ay[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_az[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-
-        workers[t].args.b = b;
-        workers[t].args.t_ax = t_ax[t];
-        workers[t].args.t_ay = t_ay[t];
-        workers[t].args.t_az = t_az[t];
+void accelerations(Planet *bodies, std::size_t count) {
+    ZoneScopedN("accelerations_pthread_pair_persist");
+    if (count == 0) {
+        return;
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i)
-        b[i].ax = b[i].ay = b[i].az = 0.0;
-
-    // Wake up all workers
-    {
-        ZoneScopedN("wake_up_workers");
-        // printf("====== Wake up all workers =====\n");
-        for (int t = 0; t < t_N; ++t)
-        {
-            pthread_mutex_lock(&workers[t].mutex);
-            workers[t].hasWork = true;
-            workers[t].done = false;
-            pthread_cond_signal(&workers[t].cond);
-            pthread_mutex_unlock(&workers[t].mutex);
-        }
+    ensure_workers(count);
+    if (worker_count == 0) {
+        return;
     }
-    {
-        ZoneScopedN("wait_for_workers");
-        // printf("====== Wait for all workers to be done =====\n");
-        for (int t = 0; t < t_N; ++t)
-        {
-            pthread_mutex_lock(&workers[t].mutex);
-            while (!workers[t].done)
-                pthread_cond_wait(&workers[t].cond_done, &workers[t].mutex);
-            // printf("***** thread %d is done! *****\n", t);
-            pthread_mutex_unlock(&workers[t].mutex);
-        }
-        // printf("===== all threads are done! merging result =====\n");
-    }
-    
-    {
-        ZoneScopedN("merge_results");
-        for (int t = 0; t < t_N; ++t)
-        {
-            for (int i = 0; i < NUM_BODIES; ++i)
-            {
-                b[i].ax += t_ax[t][i];
-                b[i].ay += t_ay[t][i];
-                b[i].az += t_az[t][i];
-            }
-            free(t_ax[t]);
-            free(t_ay[t]);
-            free(t_az[t]);
-        }
 
-        free(t_ax);
-        free(t_ay);
-        free(t_az);
+    std::vector<std::vector<double>> partial_ax(worker_count, std::vector<double>(count, 0.0));
+    std::vector<std::vector<double>> partial_ay(worker_count, std::vector<double>(count, 0.0));
+    std::vector<std::vector<double>> partial_az(worker_count, std::vector<double>(count, 0.0));
+
+    for (std::size_t i = 0; i < count; ++i) {
+        bodies[i].ax = bodies[i].ay = bodies[i].az = 0.0;
+    }
+
+    for (std::size_t t = 0; t < worker_count; ++t) {
+        Worker &worker = workers[t];
+        pthread_mutex_lock(&worker.mutex);
+        worker.args.bodies = bodies;
+        worker.args.count = count;
+        worker.args.ax = partial_ax[t].data();
+        worker.args.ay = partial_ay[t].data();
+        worker.args.az = partial_az[t].data();
+        worker.has_work = true;
+        worker.done = false;
+        pthread_cond_signal(&worker.cond);
+        pthread_mutex_unlock(&worker.mutex);
+    }
+
+    for (std::size_t t = 0; t < worker_count; ++t) {
+        Worker &worker = workers[t];
+        pthread_mutex_lock(&worker.mutex);
+        while (!worker.done) {
+            pthread_cond_wait(&worker.cond_done, &worker.mutex);
+        }
+        pthread_mutex_unlock(&worker.mutex);
+    }
+
+    for (std::size_t t = 0; t < worker_count; ++t) {
+        for (std::size_t i = 0; i < count; ++i) {
+            bodies[i].ax += partial_ax[t][i];
+            bodies[i].ay += partial_ay[t][i];
+            bodies[i].az += partial_az[t][i];
+        }
     }
 }
+

@@ -1,39 +1,45 @@
 #include "config.hpp"
+#include "accelerations.hpp"
+#include "planet.hpp"
+#include "tracy/Tracy.hpp"
 
-typedef struct
-{
-    const Planet *b;
-    int t_id;
-    int t_N;
-    double *t_ax;
-    double *t_ay;
-    double *t_az;
-} AccelerationArgs;
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <pthread.h>
+#include <vector>
 
-static void *accelerations_thread(void *arg)
-{
-    AccelerationArgs *A = (AccelerationArgs *)arg;
-    const Planet *b = A->b;
-    int t_id = A->t_id;
-    int t_N = A->t_N;
+namespace {
 
-    double *ax = A->t_ax;
-    double *ay = A->t_ay;
-    double *az = A->t_az;
+struct AccelerationArgs {
+    const Planet *bodies;
+    std::size_t thread_id;
+    std::size_t thread_count;
+    std::size_t count;
+    double *ax;
+    double *ay;
+    double *az;
+};
 
-    int count = 0;
+void *accelerations_thread(void *arg) {
+    AccelerationArgs *A = static_cast<AccelerationArgs *>(arg);
+    const Planet *b = A->bodies;
+    const std::size_t thread_id = A->thread_id;
+    const std::size_t thread_count = A->thread_count;
+    const std::size_t count = A->count;
+    double *ax = A->ax;
+    double *ay = A->ay;
+    double *az = A->az;
 
-    for (int i = t_id; i < NUM_BODIES; i+=t_N)
-    {
-        for (int j = i + 1; j < NUM_BODIES; ++j)
-        {
+    for (std::size_t i = thread_id; i < count; i += thread_count) {
+        for (std::size_t j = i + 1; j < count; ++j) {
             double dx = b[j].x - b[i].x;
             double dy = b[j].y - b[i].y;
             double dz = b[j].z - b[i].z;
-            double dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
-            double dist = sqrt(dist2);
+            double dist2 = dx * dx + dy * dy + dz * dz + config::EPSILON;
+            double dist = std::sqrt(dist2);
 
-            double F = (G * b[i].mass * b[j].mass) / dist2;
+            double F = (config::G * b[i].mass * b[j].mass) / dist2;
             double fx = F * dx / dist;
             double fy = F * dy / dist;
             double fz = F * dz / dist;
@@ -44,70 +50,51 @@ static void *accelerations_thread(void *arg)
             ax[j] -= fx / b[j].mass;
             ay[j] -= fy / b[j].mass;
             az[j] -= fz / b[j].mass;
-            count++;
-        }
-    }
-    printf("Thread %d: calc_count=%d\n", t_id, count);
-    return NULL;
-}
-
-void accelerations(Planet b[])
-{
-    ZoneScopedN("accelerations_parallel");
-
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
-
-    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
-    AccelerationArgs *args = (AccelerationArgs *)malloc(sizeof(AccelerationArgs) * t_N);
-
-    double **t_ax = (double **)malloc(sizeof(double *) * t_N);
-    double **t_ay = (double **)malloc(sizeof(double *) * t_N);
-    double **t_az = (double **)malloc(sizeof(double *) * t_N);
-    for (int t = 0; t < t_N; ++t)
-    {
-        t_ax[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_ay[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_az[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-    }
-
-    for (int i = 0; i < NUM_BODIES; ++i)
-        b[i].ax = b[i].ay = b[i].az = 0.0;
-
-    for (int t = 0; t < t_N; ++t)
-    {
-        args[t].b = b;
-        args[t].t_id = t;
-        args[t].t_N = t_N;
-        args[t].t_ax = t_ax[t];
-        args[t].t_ay = t_ay[t];
-        args[t].t_az = t_az[t];
-        pthread_create(&threads[t], NULL, accelerations_thread, &args[t]);
-    }
-
-    for (int t = 0; t < t_N; ++t)
-    {
-        pthread_join(threads[t], NULL);
-    }
-
-    for (int t = 0; t < t_N; ++t)
-    {
-        for (int i = 0; i < NUM_BODIES; ++i)
-        {
-            b[i].ax += t_ax[t][i];
-            b[i].ay += t_ay[t][i];
-            b[i].az += t_az[t][i];
         }
     }
 
-    for (int t = 0; t < t_N; ++t)
-    {
-        free(t_ax[t]);
-        free(t_ay[t]);
-        free(t_az[t]);
-    }
-    free(t_ax);
-    free(t_ay);
-    free(t_az);
-    free(threads);
-    free(args);
+    return nullptr;
 }
+
+} // namespace
+
+void accelerations_setup(Planet *, std::size_t) {}
+
+void accelerations_teardown() {}
+
+void accelerations(Planet *bodies, std::size_t count) {
+    ZoneScopedN("accelerations_pthread_pair_interleaved");
+    if (count == 0) {
+        return;
+    }
+
+    const std::size_t thread_count = std::min<std::size_t>(config::NUM_THREADS, count);
+    std::vector<pthread_t> threads(thread_count);
+    std::vector<AccelerationArgs> args(thread_count);
+    std::vector<std::vector<double>> partial_ax(thread_count, std::vector<double>(count, 0.0));
+    std::vector<std::vector<double>> partial_ay(thread_count, std::vector<double>(count, 0.0));
+    std::vector<std::vector<double>> partial_az(thread_count, std::vector<double>(count, 0.0));
+
+    for (std::size_t i = 0; i < count; ++i) {
+        bodies[i].ax = bodies[i].ay = bodies[i].az = 0.0;
+    }
+
+    for (std::size_t t = 0; t < thread_count; ++t) {
+        args[t] = AccelerationArgs{bodies, t, thread_count, count,
+                                   partial_ax[t].data(), partial_ay[t].data(), partial_az[t].data()};
+        pthread_create(&threads[t], nullptr, accelerations_thread, &args[t]);
+    }
+
+    for (std::size_t t = 0; t < thread_count; ++t) {
+        pthread_join(threads[t], nullptr);
+    }
+
+    for (std::size_t t = 0; t < thread_count; ++t) {
+        for (std::size_t i = 0; i < count; ++i) {
+            bodies[i].ax += partial_ax[t][i];
+            bodies[i].ay += partial_ay[t][i];
+            bodies[i].az += partial_az[t][i];
+        }
+    }
+}
+

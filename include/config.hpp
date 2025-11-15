@@ -1,27 +1,27 @@
 #pragma once
+
+#include <cstddef>
 #include <cstdint>
-#include <cmath>
-#include <cstdio>
-#include <SDL2/SDL.h>
-#include <pthread.h>
-#include <ctime>
-#include <cstdlib>
-#include "planet.hpp"
-#include "accelerations.hpp"
-#include "tracy/Tracy.hpp"
 
-#define WIDTH 1200
-#define HEIGHT 800
+namespace config {
 
-#define NUM_BODIES 3
-#define TRAIL_BUF 100
-#define MIN_DIST 1.5
+inline constexpr int WIDTH = 1200;
+inline constexpr int HEIGHT = 800;
+inline constexpr double MIN_DIST = 1.5;
+inline constexpr double G = 10000.0;
+inline constexpr double EPSILON = 1e-6;
+inline constexpr int NUM_THREADS = 4;
+inline constexpr double VIEW_Z = 100.0;
+inline constexpr std::size_t DEFAULT_BODY_COUNT = 3;
+inline constexpr std::size_t DEFAULT_TRAIL_LENGTH = 100;
 
-#define G 10000.0
-#define EPSILON 1e-6
+struct RuntimeOptions {
+    std::size_t body_count = DEFAULT_BODY_COUNT;
+    std::size_t trail_length = DEFAULT_TRAIL_LENGTH;
+    bool start_in_ray_tracing_mode = false;
+};
 
-#define COL_BLACK 0x00000000
+RuntimeOptions parse_arguments(int argc, char **argv);
 
-#define NUM_THREADS 4
+} // namespace config
 
-#define view_z 100.0
