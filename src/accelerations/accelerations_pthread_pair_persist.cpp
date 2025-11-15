@@ -5,6 +5,7 @@ typedef struct
     const Planet *b;
     int t_id;
     int t_N;
+    int body_count;
     double *t_ax;
     double *t_ay;
     double *t_az;
@@ -23,6 +24,7 @@ typedef struct
 } Worker;
 
 static Worker *workers = NULL;
+static int worker_thread_count = 0;
 
 static void *accelerations_thread(void *arg)
 {
@@ -51,23 +53,32 @@ static void *accelerations_thread(void *arg)
         worker->hasWork = false;
         worker->done = false;
         pthread_mutex_unlock(&worker->mutex);
-        
+
         const Planet *b = A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
+        int body_count = A->body_count;
         double *ax = A->t_ax;
         double *ay = A->t_ay;
         double *az = A->t_az;
 
-        int chunk = (NUM_BODIES + t_N - 1) / t_N;
+        if (body_count <= 0 || t_N == 0) {
+            pthread_mutex_lock(&worker->mutex);
+            worker->done = true;
+            pthread_cond_signal(&worker->cond_done);
+            pthread_mutex_unlock(&worker->mutex);
+            continue;
+        }
+
+        int chunk = (body_count + t_N - 1) / t_N;
         int i_start = t_id * chunk;
-        int i_end = (i_start + chunk < NUM_BODIES) ? (i_start + chunk) : NUM_BODIES;
+        int i_end = (i_start + chunk < body_count) ? (i_start + chunk) : body_count;
 
         {
             ZoneScopedN("compute_accelerations");
             for (int i = i_start; i < i_end; ++i)
             {
-                for (int j = 0; j < NUM_BODIES; ++j)
+                for (int j = 0; j < body_count; ++j)
                 {
                     double dx = b[j].x - b[i].x;
                     double dy = b[j].y - b[i].y;
@@ -98,11 +109,17 @@ static void *accelerations_thread(void *arg)
     return NULL;
 }
 
-void init_workers(void)
+void init_workers(int body_count)
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
-    workers = (Worker *)calloc(t_N, sizeof(Worker));
-    for (int i = 0; i < t_N; i++)
+    worker_thread_count = (NUM_THREADS > body_count ? body_count : NUM_THREADS);
+    if (worker_thread_count <= 0) {
+        workers = NULL;
+        worker_thread_count = 0;
+        return;
+    }
+
+    workers = (Worker *)calloc(worker_thread_count, sizeof(Worker));
+    for (int i = 0; i < worker_thread_count; i++)
     {
         pthread_mutex_init(&workers[i].mutex, NULL);
         pthread_cond_init(&workers[i].cond, NULL);
@@ -110,15 +127,15 @@ void init_workers(void)
         workers[i].hasWork = false;
         workers[i].exit = false;
         workers[i].args.t_id = i;
-        workers[i].args.t_N = t_N;
+        workers[i].args.t_N = worker_thread_count;
+        workers[i].args.body_count = body_count;
         pthread_create(&workers[i].thread, NULL, accelerations_thread, &workers[i]);
     }
 }
 
 void destroy_workers(void)
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
-    for (int i = 0; i < t_N; i++)
+    for (int i = 0; i < worker_thread_count; i++)
     {
         pthread_mutex_lock(&workers[i].mutex);
         workers[i].exit = true;
@@ -131,28 +148,34 @@ void destroy_workers(void)
     }
     free(workers);
     workers = NULL;
+    worker_thread_count = 0;
 }
 
-void accelerations(Planet b[])
+void accelerations(Planet b[], int body_count)
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    if (body_count <= 0 || worker_thread_count <= 0) {
+        return;
+    }
+
+    int t_N = worker_thread_count;
 
     double **t_ax = (double **)malloc(sizeof(double *) * t_N);
     double **t_ay = (double **)malloc(sizeof(double *) * t_N);
     double **t_az = (double **)malloc(sizeof(double *) * t_N);
     for (int t = 0; t < t_N; ++t)
     {
-        t_ax[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_ay[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_az[t] = (double *)calloc(NUM_BODIES, sizeof(double));
+        t_ax[t] = (double *)calloc(body_count, sizeof(double));
+        t_ay[t] = (double *)calloc(body_count, sizeof(double));
+        t_az[t] = (double *)calloc(body_count, sizeof(double));
 
         workers[t].args.b = b;
+        workers[t].args.body_count = body_count;
         workers[t].args.t_ax = t_ax[t];
         workers[t].args.t_ay = t_ay[t];
         workers[t].args.t_az = t_az[t];
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < body_count; ++i)
         b[i].ax = b[i].ay = b[i].az = 0.0;
 
     // Wake up all workers
@@ -186,7 +209,7 @@ void accelerations(Planet b[])
         ZoneScopedN("merge_results");
         for (int t = 0; t < t_N; ++t)
         {
-            for (int i = 0; i < NUM_BODIES; ++i)
+            for (int i = 0; i < body_count; ++i)
             {
                 b[i].ax += t_ax[t][i];
                 b[i].ay += t_ay[t][i];

@@ -1,14 +1,14 @@
 #include "config.hpp"
 
-void accelerations(Planet b[])
+void accelerations(Planet b[], int body_count)
 {
     ZoneScopedN("accelerations");
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < body_count; ++i)
         b[i].ax = b[i].ay = b[i].az = 0.0;
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < body_count; ++i)
     {
-        for (int j = i + 1; j < NUM_BODIES; ++j)
+        for (int j = i + 1; j < body_count; ++j)
         {
             double dx = b[j].x - b[i].x;
             double dy = b[j].y - b[i].y;

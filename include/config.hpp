@@ -7,13 +7,11 @@
 #include <ctime>
 #include <cstdlib>
 #include "planet.hpp"
-#include "accelerations.hpp"
 #include "tracy/Tracy.hpp"
 
 #define WIDTH 1200
 #define HEIGHT 800
 
-#define NUM_BODIES 3
 #define TRAIL_BUF 100
 #define MIN_DIST 1.5
 
@@ -25,3 +23,5 @@
 #define NUM_THREADS 4
 
 #define view_z 100.0
+
+inline constexpr int DEFAULT_NUM_BODIES = 3;

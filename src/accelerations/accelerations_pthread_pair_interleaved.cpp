@@ -5,6 +5,7 @@ typedef struct
     const Planet *b;
     int t_id;
     int t_N;
+    int body_count;
     double *t_ax;
     double *t_ay;
     double *t_az;
@@ -16,6 +17,7 @@ static void *accelerations_thread(void *arg)
     const Planet *b = A->b;
     int t_id = A->t_id;
     int t_N = A->t_N;
+    int body_count = A->body_count;
 
     double *ax = A->t_ax;
     double *ay = A->t_ay;
@@ -23,9 +25,9 @@ static void *accelerations_thread(void *arg)
 
     int count = 0;
 
-    for (int i = t_id; i < NUM_BODIES; i+=t_N)
+    for (int i = t_id; i < body_count; i+=t_N)
     {
-        for (int j = i + 1; j < NUM_BODIES; ++j)
+        for (int j = i + 1; j < body_count; ++j)
         {
             double dx = b[j].x - b[i].x;
             double dy = b[j].y - b[i].y;
@@ -51,11 +53,15 @@ static void *accelerations_thread(void *arg)
     return NULL;
 }
 
-void accelerations(Planet b[])
+void accelerations(Planet b[], int body_count)
 {
     ZoneScopedN("accelerations_parallel");
 
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    if (body_count <= 0) {
+        return;
+    }
+
+    int t_N = NUM_THREADS > body_count ? body_count : NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
     AccelerationArgs *args = (AccelerationArgs *)malloc(sizeof(AccelerationArgs) * t_N);
@@ -65,12 +71,12 @@ void accelerations(Planet b[])
     double **t_az = (double **)malloc(sizeof(double *) * t_N);
     for (int t = 0; t < t_N; ++t)
     {
-        t_ax[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_ay[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_az[t] = (double *)calloc(NUM_BODIES, sizeof(double));
+        t_ax[t] = (double *)calloc(body_count, sizeof(double));
+        t_ay[t] = (double *)calloc(body_count, sizeof(double));
+        t_az[t] = (double *)calloc(body_count, sizeof(double));
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < body_count; ++i)
         b[i].ax = b[i].ay = b[i].az = 0.0;
 
     for (int t = 0; t < t_N; ++t)
@@ -78,6 +84,7 @@ void accelerations(Planet b[])
         args[t].b = b;
         args[t].t_id = t;
         args[t].t_N = t_N;
+        args[t].body_count = body_count;
         args[t].t_ax = t_ax[t];
         args[t].t_ay = t_ay[t];
         args[t].t_az = t_az[t];
@@ -91,7 +98,7 @@ void accelerations(Planet b[])
 
     for (int t = 0; t < t_N; ++t)
     {
-        for (int i = 0; i < NUM_BODIES; ++i)
+        for (int i = 0; i < body_count; ++i)
         {
             b[i].ax += t_ax[t][i];
             b[i].ay += t_ay[t][i];

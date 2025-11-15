@@ -1,4 +1,6 @@
 #include "config.hpp"
+#include "accelerations.hpp"
+#include <vector>
 
 using namespace std;
 
@@ -9,6 +11,55 @@ typedef struct {
     int head;
     int size;
 } Trail;
+
+static Uint32 hsv_to_rgb(double h, double s, double v)
+{
+    double c = v * s;
+    double h_prime = h * 6.0;
+    double x = c * (1.0 - fabs(fmod(h_prime, 2.0) - 1.0));
+    double m = v - c;
+    double r = 0.0, g = 0.0, b = 0.0;
+
+    if (h_prime >= 0.0 && h_prime < 1.0) {
+        r = c;
+        g = x;
+    } else if (h_prime < 2.0) {
+        r = x;
+        g = c;
+    } else if (h_prime < 3.0) {
+        g = c;
+        b = x;
+    } else if (h_prime < 4.0) {
+        g = x;
+        b = c;
+    } else if (h_prime < 5.0) {
+        r = x;
+        b = c;
+    } else {
+        r = c;
+        b = x;
+    }
+
+    Uint8 R = static_cast<Uint8>((r + m) * 255.0);
+    Uint8 G = static_cast<Uint8>((g + m) * 255.0);
+    Uint8 B = static_cast<Uint8>((b + m) * 255.0);
+    return (R << 16) | (G << 8) | B;
+}
+
+static Uint32 color_for_index(size_t idx)
+{
+    static const Uint32 base_colors[] = {
+        0x00ff0000, 0x0000ff00, 0x000000ff,
+        0x00ffff00, 0x00ff00ff, 0x0000ffff
+    };
+    constexpr size_t base_count = sizeof(base_colors) / sizeof(base_colors[0]);
+    if (idx < base_count) {
+        return base_colors[idx];
+    }
+
+    double hue = fmod((idx - base_count) * 0.61803398875, 1.0);
+    return hsv_to_rgb(hue, 0.65, 0.95);
+}
 
 static void fill_circle(SDL_Surface *surf, int cx, int cy, int cz, int rad, Uint32 col)
 {
@@ -88,17 +139,28 @@ static void trail_draw(SDL_Surface *surf, const Trail *t, Uint32 col)
     }
 }
 
-static void step_leapfrog(Planet b[], double dt)
+static void step_leapfrog(vector<Planet> &b, double dt)
 {
-    static int first = 1;
+    static bool first = true;
+    static size_t last_body_count = 0;
+    const size_t body_count = b.size();
+
+    if (body_count == 0) {
+        return;
+    }
+
+    if (body_count != last_body_count) {
+        first = true;
+        last_body_count = body_count;
+    }
 
     if (first) {
         ZoneScopedN("step_leapfrog_first");
-        accelerations(b);
-        first = 0;
+        accelerations(b.data(), static_cast<int>(body_count));
+        first = false;
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i) {
+    for (size_t i = 0; i < body_count; ++i) {
         b[i].vx += 0.5 * b[i].ax * dt;
         b[i].vy += 0.5 * b[i].ay * dt;
         b[i].vz += 0.5 * b[i].az * dt;
@@ -107,9 +169,9 @@ static void step_leapfrog(Planet b[], double dt)
         b[i].z  +=      b[i].vz * dt;
     }
 
-    accelerations(b);
+    accelerations(b.data(), static_cast<int>(body_count));
 
-    for (int i = 0; i < NUM_BODIES; ++i) {
+    for (size_t i = 0; i < body_count; ++i) {
         ZoneScopedN("step_leapfrog");
         b[i].vx += 0.5 * b[i].ax * dt;
         b[i].vy += 0.5 * b[i].ay * dt;
@@ -117,15 +179,18 @@ static void step_leapfrog(Planet b[], double dt)
     }
 }
 
-static void recenter(Planet b[])
+static void recenter(vector<Planet> &b)
 {
     ZoneScopedN("recenter");
     double cx = 0, cy = 0, cz = 0, M = 0;
-    for (int i = 0; i < NUM_BODIES; ++i) {
-        cx += b[i].x * b[i].mass;
-        cy += b[i].y * b[i].mass;
-        cz += b[i].z * b[i].mass;
-        M  += b[i].mass;
+    for (const Planet &planet : b) {
+        cx += planet.x * planet.mass;
+        cy += planet.y * planet.mass;
+        cz += planet.z * planet.mass;
+        M  += planet.mass;
+    }
+    if (M == 0.0) {
+        return;
     }
     cx /= M;
     cy /= M;
@@ -134,10 +199,10 @@ static void recenter(Planet b[])
     double dx = WIDTH / 2.0 - cx;
     double dy = HEIGHT / 2.0 - cy;
     double dz = 0.0 - cz;
-    for (int i = 0; i < NUM_BODIES; ++i) {
-        b[i].x += dx;
-        b[i].y += dy;
-        b[i].z += dz;
+    for (Planet &planet : b) {
+        planet.x += dx;
+        planet.y += dy;
+        planet.z += dz;
     }
 }
 
@@ -149,10 +214,22 @@ double random_double(double min, double max)
     return min + (rand() / div);
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     tracy::SetThreadName("main_thread");
     srand(time(NULL));
+
+    int body_count = DEFAULT_NUM_BODIES;
+    if (argc > 1) {
+        char *end = nullptr;
+        long parsed = strtol(argv[1], &end, 10);
+        if (end && *end == '\0' && parsed > 0) {
+            body_count = static_cast<int>(parsed);
+        } else {
+            fprintf(stderr, "Invalid body count '%s', using default %d.\n", argv[1], DEFAULT_NUM_BODIES);
+        }
+    }
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return 1;
@@ -172,8 +249,7 @@ int main(void)
         return 1;
     }
 
-    const unsigned long colors[] = {0x00ff0000, 0x0000ff00, 0x000000ff, 0x00ffff00, 0x00ff00ff, 0x0000ffff};
-    Planet bodies[NUM_BODIES];
+    vector<Planet> bodies(static_cast<size_t>(body_count));
     const double S  = 140.0;
     const double VS = 140.0;
     const double m  = 200.0;
@@ -181,8 +257,8 @@ int main(void)
     double cy = HEIGHT / 2.0;
     double cz = 0.0;
 
-    for (int i = 0; i < NUM_BODIES; ++i){
-        bodies[i] = (Planet){
+    for (Planet &planet : bodies){
+        planet = (Planet){
             cx + random_double(-1.0, 1.0) * S,
             cy + random_double(-1.0, 1.0) * S,
             cz + random_double(-0.1, 0.1) * S,
@@ -193,7 +269,7 @@ int main(void)
             m, 15};
     }
 
-    Trail trails[NUM_BODIES] = {0};
+    vector<Trail> trails(static_cast<size_t>(body_count));
 
     int running = 1;
     SDL_Event ev;
@@ -201,7 +277,7 @@ int main(void)
     double accumulator = 0.0;
     Uint32 prev = SDL_GetTicks();
     #ifdef INIT_REQUIRED
-        init_workers();
+        init_workers(body_count);
     #endif
     while (running)
     {
@@ -222,14 +298,15 @@ int main(void)
 
         recenter(bodies);
 
-        for (int i = 0; i < NUM_BODIES; ++i)
+        for (size_t i = 0; i < bodies.size(); ++i)
             trail_push(&trails[i], (int)bodies[i].x, (int)bodies[i].y, (int)bodies[i].z);
 
         SDL_FillRect(surf, NULL, COL_BLACK);
-        
-        for (int i = 0; i < NUM_BODIES; ++i) {
-            trail_draw(surf, &trails[i], colors[i % 6]);
-            fill_circle(surf, (int)bodies[i].x, (int)bodies[i].y, (int)bodies[i].z, (int) bodies[i].r, colors[i % 6]);
+
+        for (size_t i = 0; i < bodies.size(); ++i) {
+            Uint32 color = color_for_index(i);
+            trail_draw(surf, &trails[i], color);
+            fill_circle(surf, (int)bodies[i].x, (int)bodies[i].y, (int)bodies[i].z, (int) bodies[i].r, color);
         }
 
         SDL_UpdateWindowSurface(win);
