@@ -15,12 +15,8 @@ void integrator(Planet b[], double dt)
 
     for (int i = 0; i < NUM_BODIES; ++i)
     {
-        b[i].vx += 0.5 * b[i].ax * dt;
-        b[i].vy += 0.5 * b[i].ay * dt;
-        b[i].vz += 0.5 * b[i].az * dt;
-        b[i].x += b[i].vx * dt;
-        b[i].y += b[i].vy * dt;
-        b[i].z += b[i].vz * dt;
+        b[i].vel += 0.5 * b[i].acc * dt;
+        b[i].pos += b[i].vel * dt;
     }
 
     accelerations(b);
@@ -28,8 +24,6 @@ void integrator(Planet b[], double dt)
     for (int i = 0; i < NUM_BODIES; ++i)
     {
         ZoneScopedN("step_leapfrog");
-        b[i].vx += 0.5 * b[i].ax * dt;
-        b[i].vy += 0.5 * b[i].ay * dt;
-        b[i].vz += 0.5 * b[i].az * dt;
+        b[i].vel += 0.5 * b[i].acc * dt;
     }
 }
