@@ -69,8 +69,8 @@ int main(void)
     vec3 pixel_delta_u = viewport_u / WIDTH;
     vec3 pixel_delta_v = viewport_v / HEIGHT;
 
-    vec3 viewport_upper_left = camera_center - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
-    point3 pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+    vec3 viewport_bottom_left = camera_center + vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+    point3 pixel00_loc = viewport_bottom_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
     for (int i = 0; i < NUM_BODIES; ++i){
         bodies[i] = (Planet){
