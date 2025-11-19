@@ -7,12 +7,18 @@
 
 using namespace std;
 
-double random_double(double min, double max)
+canvas canvas_buf;
+
+vec3 random_vec3(double min, double max)
 {
     ZoneScopedN("random_double");
     double range = (max - min);
     double div = RAND_MAX / range;
-    return min + (rand() / div);
+    return vec3(
+        min + (rand() / div),
+        min + (rand() / div),
+        min + (rand() / div)
+    );
 }
 
 int main(void)
@@ -43,24 +49,31 @@ int main(void)
     const double S  = 140.0;
     const double VS = 140.0;
     const double m  = 200.0;
-    double cx = WIDTH / 2.0;
-    double cy = HEIGHT / 2.0;
-    double cz = 0.0;
+
+    auto focal_length = 1.0;
+    auto viewport_height = 2.0;
+    auto viewport_width = viewport_height * (double(WIDTH) / HEIGHT);
+    point3 camera_center = point3(0, 0, 0);
+
+    // Calculate the vectors across the horizontal and down the vertical viewport edges.
+    vec3 viewport_u = vec3(viewport_width, 0, 0);
+    vec3 viewport_v = vec3(0, viewport_height, 0);
+    vec3 pixel_delta_u = viewport_u / WIDTH;
+    vec3 pixel_delta_v = viewport_v / HEIGHT;
+
+    vec3 viewport_upper_left = camera_center - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+    point3 pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
     for (int i = 0; i < NUM_BODIES; ++i){
         bodies[i] = (Planet){
-            cx + random_double(-1.0, 1.0) * S,
-            cy + random_double(-1.0, 1.0) * S,
-            cz + random_double(-0.1, 0.1) * S,
-            random_double(-1.0, 1.0) * VS,
-            random_double(-1.0, 1.0) * VS,
-            random_double(-0.1, 0.1) * VS,
-            0.0, 0.0, 0.0,
+            random_vec3(-1.0, 1.0) * S,
+            random_vec3(-1.0, 1.0) * VS,
+            vec3(0.0, 0.0, 0.0),
             m, 15};
     }
 
-    Trail trails[NUM_BODIES] = {0};
-
+    Trail trails[NUM_BODIES] = {};
+    
     int running = 1;
     SDL_Event ev;
     const double FIXED_DT = 0.0002;
@@ -86,20 +99,17 @@ int main(void)
             accumulator -= FIXED_DT;
         }
 
-        recenter(bodies);
-
+        // recenter(bodies);
         for (int i = 0; i < NUM_BODIES; ++i)
-            trail_push(&trails[i], (int)bodies[i].x, (int)bodies[i].y, (int)bodies[i].z);
-
-        SDL_FillRect(surf, NULL, COL_BLACK);
+            trail_push(&trails[i], bodies[i].pos);
         
-        for (int i = 0; i < NUM_BODIES; ++i) {
-            trail_draw(surf, &trails[i], colors[i % 6]);
-            fill_circle(surf, (int)bodies[i].x, (int)bodies[i].y, (int)bodies[i].z, (int) bodies[i].r, colors[i % 6]);
-        }
-
-        SDL_UpdateWindowSurface(win);
-        SDL_Delay(16);
+        render(
+            canvas_buf,
+            camera_center,
+            pixel00_loc,
+            pixel_delta_u,
+            pixel_delta_v
+        );
     }
     #ifdef INIT_REQUIRED
         destroy_workers();
