@@ -82,7 +82,13 @@ int main(void)
             random_vec3(-1.0, 1.0) * S,
             random_vec3(-1.0, 1.0) * VS,
             vec3(0.0, 0.0, 0.0),
-            m, 15};
+            m, 15,
+            { 
+                (uint8_t)((colors[i % 6] >> 16) & 0xFF),
+                (uint8_t)((colors[i % 6] >> 8) & 0xFF),
+                (uint8_t)(colors[i % 6] & 0xFF),
+                255
+            }};
     }
 
     Trail trails[NUM_BODIES] = {};

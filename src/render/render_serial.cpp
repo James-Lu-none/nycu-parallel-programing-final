@@ -32,10 +32,10 @@ color get_ray_color(const ray &r, const Planet* bodies)
     {
         if (hit_planet(bodies[i], r))
         {
-            return {255, 0, 0, 255};
+            return bodies[i].col;
         }
     }
-    return {255, 255, 255, 255};
+    return {0, 0, 0, 255};
 }
 
 bool hit_planet(const Planet &p, const ray &r)
