@@ -27,12 +27,14 @@ target_link_libraries(N_body
     accelerations
     render
     integrator
+    planet
     m
 )
 
 add_subdirectory(src/accelerations)
 add_subdirectory(src/render)
 add_subdirectory(src/integrator)
+add_subdirectory(src/planet)
 
 target_include_directories(N_body PUBLIC ${SDL2_INCLUDE_DIRS})
 target_compile_options(N_body PUBLIC -Wall -O2 -pg -g)
