@@ -21,6 +21,11 @@ vec3 random_vec3(double min, double max)
     );
 }
 
+void update_camera()
+{
+    ZoneScopedN("update_camera");
+}
+
 int main(void)
 {
     tracy::SetThreadName("main_thread");
@@ -94,8 +99,50 @@ int main(void)
     {
         FrameMark;
         while (SDL_PollEvent(&ev))
-            if (ev.type == SDL_QUIT) running = 0;
+        {
+            if (ev.type == SDL_QUIT)
+                running = 0;
 
+            if (ev.type == SDL_MOUSEWHEEL)
+            {
+                if (ev.wheel.y > 0)
+                {
+                    camera_center = camera_center + vec3(0, 0, 10);
+                }
+                else if (ev.wheel.y < 0)
+                {
+                    camera_center = camera_center - vec3(0, 0, 10);
+                }
+                printf("camera_center.z: %f\n", camera_center.z());
+            }
+            
+            if (ev.type == SDL_KEYDOWN)
+            {
+                switch (ev.key.keysym.sym)
+                {
+                case SDLK_w:
+                    camera_center = camera_center + vec3(0, 10, 0);
+                    break;
+                case SDLK_s:
+                    camera_center = camera_center - vec3(0, 10, 0);
+                    break;
+                case SDLK_a:
+                    camera_center = camera_center - vec3(10, 0, 0);
+                    break;
+                case SDLK_d:
+                    camera_center = camera_center + vec3(10, 0, 0);
+                    break;
+                }
+                printf("camera_center: (%f, %f, %f)\n", camera_center.x(), camera_center.y(), camera_center.z());
+            }
+            viewport_u = vec3(viewport_width, 0, 0);
+            viewport_v = vec3(0, viewport_height, 0);
+            pixel_delta_u = viewport_u / WIDTH;
+            pixel_delta_v = viewport_v / HEIGHT;
+
+            viewport_bottom_left = camera_center + vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+            pixel00_loc = viewport_bottom_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+        }
         Uint32 now = SDL_GetTicks();
         double frame_dt = (now - prev) / 1000.0;
         prev = now;
