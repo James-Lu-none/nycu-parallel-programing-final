@@ -1,16 +1,9 @@
 #include "accelerations.hpp"
+#include "planet.hpp"
 
 #include "config.hpp"
 
 using namespace std;
-
-typedef struct {
-    int x[TRAIL_BUF];
-    int y[TRAIL_BUF];
-    int z[TRAIL_BUF];
-    int head;
-    int size;
-} Trail;
 
 static void fill_circle(SDL_Surface *surf, int cx, int cy, int cz, int rad, Uint32 col)
 {

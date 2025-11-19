@@ -6,7 +6,6 @@
 #include <pthread.h>
 #include <ctime>
 #include <cstdlib>
-#include "planet.hpp"
 #include "tracy/Tracy.hpp"
 
 #define WIDTH 1200
