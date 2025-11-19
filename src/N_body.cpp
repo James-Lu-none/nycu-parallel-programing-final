@@ -109,7 +109,8 @@ int main(void)
             camera_center,
             pixel00_loc,
             pixel_delta_u,
-            pixel_delta_v
+            pixel_delta_v,
+            bodies
         );
 
         SDL_LockSurface(surf);
