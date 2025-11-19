@@ -82,7 +82,7 @@ int main(void)
         accumulator += frame_dt;
 
         while (accumulator >= FIXED_DT) {
-            step_leapfrog(bodies, FIXED_DT);
+            integrator(bodies, FIXED_DT);
             accumulator -= FIXED_DT;
         }
 
