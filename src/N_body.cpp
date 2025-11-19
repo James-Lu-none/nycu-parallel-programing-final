@@ -33,6 +33,7 @@ int main(void)
     SDL_Window *win = SDL_CreateWindow("Three-Body Problem",
                                        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                        WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+    SDL_Surface *win_surf = SDL_GetWindowSurface(win);
     if (!win) {
         fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError());
         return 1;
@@ -110,6 +111,14 @@ int main(void)
             pixel_delta_u,
             pixel_delta_v
         );
+
+        SDL_LockSurface(surf);
+        memcpy(surf->pixels, canvas_buf.pixels, WIDTH * HEIGHT * sizeof(color));
+        SDL_UnlockSurface(surf);
+
+        SDL_BlitSurface(surf, NULL, win_surf, NULL);
+        SDL_UpdateWindowSurface(win);
+        SDL_Delay(16);
     }
     #ifdef INIT_REQUIRED
         destroy_workers();
