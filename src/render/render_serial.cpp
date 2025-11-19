@@ -8,7 +8,8 @@ void render(
     const point3 &camera_center,
     const vec3 &pixel00_loc,
     const vec3 &pixel_delta_u,
-    const vec3 &pixel_delta_v
+    const vec3 &pixel_delta_v,
+    const Planet* bodies
 )
 {
     for (int j = 0; j < HEIGHT; j++)
@@ -19,15 +20,32 @@ void render(
             vec3 ray_direction = pixel_center - camera_center;
             ray r(camera_center, ray_direction);
 
-            color pixel_color = get_ray_color(r);
+            color pixel_color = get_ray_color(r, bodies);
             buf.pixels[j * WIDTH + i] = pixel_color;
         }
     }
 }
 
-color get_ray_color(const ray &r)
+color get_ray_color(const ray &r, const Planet* bodies)
 {
+    for (int i = 0; i < NUM_BODIES; ++i)
+    {
+        if (hit_planet(bodies[i], r))
+        {
+            return {255, 0, 0};
+        }
+    }
     return {255, 255, 255};
+}
+
+bool hit_planet(const Planet &p, const ray &r)
+{
+    vec3 oc = p.pos - r.origin();
+    auto a = dot(r.direction(), r.direction());
+    auto b = -2.0 * dot(r.direction(), oc);
+    auto c = dot(oc, oc) - p.r * p.r;
+    auto discriminant = b * b - 4 * a * c;
+    return (discriminant >= 0);
 }
 
 void recenter(Planet b[])
