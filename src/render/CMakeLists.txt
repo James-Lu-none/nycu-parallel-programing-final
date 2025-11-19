@@ -1,4 +1,4 @@
-set(RENDER_VARIANT "serial" CACHE STRING "Acceleration implementation variant")
+set(RENDER_VARIANT "serial" CACHE STRING "render implementation variant")
 
 if(RENDER_VARIANT STREQUAL "serial")
     add_library(render render_serial.cpp)
