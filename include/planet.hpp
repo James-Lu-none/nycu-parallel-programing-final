@@ -2,6 +2,7 @@
 #define PLANET_HPP
 #include "config.hpp"
 #include "vec3.hpp"
+#include "canvas.hpp"
 
 typedef struct
 {
@@ -10,6 +11,7 @@ typedef struct
     vec3 acc;
     double mass;
     double r;
+    color col;
 } Planet;
 
 typedef struct

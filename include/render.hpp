@@ -2,20 +2,8 @@
 #include "planet.hpp"
 #include "vec3.hpp"
 #include "ray.hpp"
+#include "canvas.hpp"
 #include "config.hpp"
-
-struct color
-{
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-    uint8_t a;
-};
-
-struct canvas
-{
-    color pixels[WIDTH * HEIGHT];
-};
 
 void render(
     canvas &buf, 
