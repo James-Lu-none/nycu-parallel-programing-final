@@ -39,7 +39,14 @@ int main(void)
         return 1;
     }
 
-    SDL_Surface *surf = SDL_GetWindowSurface(win);
+    SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(
+        0,
+        WIDTH, HEIGHT,
+        32,
+        SDL_PIXELFORMAT_ARGB8888
+    );
+    printf("pitch: %d bytes\n", surf->pitch);
+
     if (!surf) {
         fprintf(stderr, "SDL_GetWindowSurface: %s\n", SDL_GetError());
         return 1;
