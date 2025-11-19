@@ -11,11 +11,13 @@ void render(
     const vec3 &pixel00_loc,
     const vec3 &pixel_delta_u,
     const vec3 &pixel_delta_v,
-    const Planet* bodies
+    const Planet* bodies,
+    const Trail* trails = nullptr
 );
 
-color get_ray_color(const ray &r, const Planet* bodies);
+color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails);
 bool hit_planet(const Planet &p, const ray &r);
+bool hit_trail(const Trail &t, const ray &r);
 
 void trail_push(Trail *t, vec3 pos);
 void recenter(Planet b[]);

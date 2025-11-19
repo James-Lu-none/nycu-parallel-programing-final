@@ -170,7 +170,8 @@ int main(void)
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
-            bodies
+            bodies,
+            trails
         );
 
         SDL_LockSurface(surf);
