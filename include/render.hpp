@@ -16,7 +16,7 @@ void render(
 );
 
 color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails);
-bool hit_planet(const Planet &p, const ray &r);
+double hit_planet(const Planet &p, const ray &r);
 bool hit_trail(const Trail &t, const ray &r);
 
 void trail_push(Trail *t, vec3 pos);

@@ -14,7 +14,7 @@ void render(
 )
 {
     for (int j = 0; j < HEIGHT; j++)
-    {
+    {           
         for (int i = 0; i < WIDTH; i++)
         {
             vec3 pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
@@ -31,14 +31,23 @@ color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails)
 {
     for (int i = 0; i < NUM_BODIES; ++i)
     {
-        if (hit_planet(bodies[i], r))
-        {
-            return bodies[i].col;
+        double t = hit_planet(bodies[i], r);
+        if (t >= 0)
+        {   
+            vec3 N = 128 * (unit_vector(r.at(t) - bodies[i].pos) + vec3(1, 1, 1));
+            // printf("N: (%f, %f, %f)\n", N.x(), N.y(), N.z());
+            return {
+                (uint8_t)std::min(N.x(), 255.0),
+                (uint8_t)std::min(N.y(), 255.0),
+                (uint8_t)std::min(N.z(), 255.0),
+                255
+            };
+            // return bodies[i].col;
         }
-        if (hit_trail(trails[i], r))
-        {
-            return bodies[i].col;
-        }
+        // if (hit_trail(trails[i], r))
+        // {
+        //     return bodies[i].col;
+        // }
     }
     return {0, 0, 0, 255};
 }
@@ -60,12 +69,19 @@ bool hit_trail(const Trail &t, const ray &r)
     return false;
 }
 
-bool hit_planet(const Planet &p, const ray &r)
+double hit_planet(const Planet &p, const ray &r)
 {
     vec3 oc = p.pos - r.origin();
     double a = dot(r.direction(), r.direction());
     double b = -2.0 * dot(r.direction(), oc);
     double c = dot(oc, oc) - p.r * p.r;
     double discriminant = b * b - 4 * a * c;
-    return (discriminant >= 0);
+    if (discriminant < 0)
+    {
+        return -1.0;
+    }
+    else 
+    {
+        return (-b - sqrt(discriminant)) / (2.0 * a);
+    }
 }
