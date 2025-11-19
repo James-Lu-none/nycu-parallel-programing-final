@@ -3,7 +3,6 @@
 ## build and run
 
 ```bash
-cd final
 mkdir build && cd build
 # ACCEL_VARIANT can be one of: serial, pthread, pthread_pair, pthread_pair_persist
 cmake -DACCEL_VARIANT=pthread_pair_persist ..
