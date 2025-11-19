@@ -12,7 +12,7 @@
 #define HEIGHT 800
 
 #define NUM_BODIES 3
-#define TRAIL_BUF 100
+#define TRAIL_BUF 5
 #define MIN_DIST 1.5
 
 #define G 10000.0
