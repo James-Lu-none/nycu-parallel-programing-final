@@ -1,3 +1,5 @@
+#include "accelerations.hpp" 
+
 #include "config.hpp"
 
 void accelerations(Planet b[])

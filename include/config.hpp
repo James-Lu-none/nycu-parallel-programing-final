@@ -7,7 +7,6 @@
 #include <ctime>
 #include <cstdlib>
 #include "planet.hpp"
-#include "accelerations.hpp"
 #include "tracy/Tracy.hpp"
 
 #define WIDTH 1200
