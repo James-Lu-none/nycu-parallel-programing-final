@@ -1,12 +1,13 @@
 #ifndef PLANET_HPP
 #define PLANET_HPP
 #include "config.hpp"
+#include "vec3.hpp"
 
 typedef struct
 {
-    double x, y, z;
-    double vx, vy, vz;
-    double ax, ay, az;
+    point3 pos;
+    vec3 vel;
+    vec3 acc;
     double mass;
     double r;
 } Planet;
