@@ -32,19 +32,19 @@ color get_ray_color(const ray &r, const Planet* bodies)
     {
         if (hit_planet(bodies[i], r))
         {
-            return {255, 0, 0};
+            return {255, 0, 0, 255};
         }
     }
-    return {255, 255, 255};
+    return {255, 255, 255, 255};
 }
 
 bool hit_planet(const Planet &p, const ray &r)
 {
     vec3 oc = p.pos - r.origin();
-    auto a = dot(r.direction(), r.direction());
-    auto b = -2.0 * dot(r.direction(), oc);
-    auto c = dot(oc, oc) - p.r * p.r;
-    auto discriminant = b * b - 4 * a * c;
+    double a = dot(r.direction(), r.direction());
+    double b = -2.0 * dot(r.direction(), oc);
+    double c = dot(oc, oc) - p.r * p.r;
+    double discriminant = b * b - 4 * a * c;
     return (discriminant >= 0);
 }
 
