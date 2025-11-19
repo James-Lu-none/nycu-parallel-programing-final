@@ -14,9 +14,7 @@ typedef struct
 
 typedef struct
 {
-    int x[TRAIL_BUF];
-    int y[TRAIL_BUF];
-    int z[TRAIL_BUF];
+    point3 pos[TRAIL_BUF];
     int head;
     int size;
 } Trail;
