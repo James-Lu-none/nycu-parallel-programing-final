@@ -41,12 +41,16 @@ float hit_planet(const Planet &p, const ray &r)
 
 color background(const ray &r)
 {
+    color hit_color = {0, 0, 0, 255};
+
+    #ifdef DEBUG
     const vec3 O = r.origin();
     const vec3 D = r.direction();
     constexpr float radius2 = 5.0f;
-    color hit_color = {0,0,0,255};
     float min_t = 1e30;
     // X-axis cylinder: y^2 + z^2 = r^2
+    printf("Ray origin: (%.2f, %.2f, %.2f), direction: (%.2f, %.2f, %.2f)\n",
+        O.x(), O.y(), O.z(), D.x(), D.y(), D.z());
     {
         float a = D.y() * D.y() + D.z() * D.z();
         float b = 2.0f * (O.y() * D.y() + O.z() * D.z());
@@ -106,6 +110,7 @@ color background(const ray &r)
             hit_color = {255, 255, 255, 255};
         }
     }
+    #endif //DEBUG
 
     return hit_color;
 }
