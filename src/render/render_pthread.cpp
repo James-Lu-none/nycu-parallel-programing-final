@@ -4,7 +4,7 @@
 #include "ray.hpp"
 
 typedef struct {
-    canvas* buf;
+    void* buf;
     const Camera* camera;
     const Planet* bodies;
     const Trail* trails;
@@ -94,7 +94,7 @@ void *render_thread(void *args_void){
     }
 
     memcpy(
-        args->buf->pixels + (start_row * WIDTH),
+        (color*)args->buf + (start_row * WIDTH),
         buf,
         sizeof(color) * WIDTH * (end_row - start_row)
     );
@@ -103,7 +103,7 @@ void *render_thread(void *args_void){
 
 
 void render(
-    canvas &buf,
+    void *buf,
     const Camera &camera,
     const Planet* bodies,
     const Trail* trails

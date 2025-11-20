@@ -108,16 +108,13 @@ int main(void)
         // recenter(bodies);
         for (int i = 0; i < NUM_BODIES; ++i)
             trail_push(&trails[i], bodies[i].pos);
-
+        SDL_LockSurface(surf);
         render(
-            canvas_buf,
+            surf->pixels,
             camera,
             bodies,
             trails
         );
-
-        SDL_LockSurface(surf);
-        memcpy(surf->pixels, canvas_buf.pixels, WIDTH * HEIGHT * sizeof(color));
         SDL_UnlockSurface(surf);
 
         SDL_BlitSurface(surf, NULL, win_surf, NULL);

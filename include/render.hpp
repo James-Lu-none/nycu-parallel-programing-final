@@ -7,7 +7,7 @@
 #include "config.hpp"
 
 void render(
-    canvas &buf,
+    void *buf,
     const Camera &camera,
     const Planet* bodies,
     const Trail* trails = nullptr

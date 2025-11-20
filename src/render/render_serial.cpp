@@ -4,7 +4,7 @@
 #include "ray.hpp"
 
 void render(
-    canvas &buf,
+    void *buf,
     const Camera &camera,
     const Planet* bodies,
     const Trail* trails
@@ -20,7 +20,7 @@ void render(
             ray r(camera.center, ray_direction);
 
             color pixel_color = get_ray_color(r, bodies, trails);
-            buf.pixels[j * WIDTH + i] = pixel_color;
+            ((color*)buf)[j * WIDTH + i] = pixel_color;
         }
     }
 }
@@ -35,9 +35,9 @@ color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails)
             vec3 N = 128 * (unit_vector(r.at(t) - bodies[i].pos) + vec3(1, 1, 1));
             // printf("N: (%f, %f, %f)\n", N.x(), N.y(), N.z());
             return {
-                (uint8_t)std::min(N.x(), 255.0),
-                (uint8_t)std::min(N.y(), 255.0),
-                (uint8_t)std::min(N.z(), 255.0),
+                (uint8_t)std::min(N.x(), (float)255.0),
+                (uint8_t)std::min(N.y(), (float)255.0),
+                (uint8_t)std::min(N.z(), (float)255.0),
                 255
             };
             // return bodies[i].col;
