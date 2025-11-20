@@ -3,6 +3,8 @@
 #include "vec3.hpp"
 #include "ray.hpp"
 
+const vec3 light_dir = unit_vector(vec3(1, 1, 0.6));
+
 float hit_trail(const Trail &t, const ray &r)
 {
     int radius_squared = 4; // radius 2
@@ -52,14 +54,16 @@ color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
     if (t >= 0 && idx != -1)
     {
         vec3 hit_point = r.at(t);
-        vec3 N = 128 * (unit_vector(r.at(t) - bodies[idx].pos) + vec3(1, 1, 1));
-        // printf("N: (%f, %f, %f)\n", N.x(), N.y(), N.z());
+        vec3 N = unit_vector(hit_point - bodies[idx].pos);
+        // calculate brightness with dot product of normal and light direction
+        float brightness = 0.2f + 0.8f * std::max(dot(N, light_dir), 0.0f);
+        
         return {
-            (uint8_t)std::min(N.x(), (float)255.0),
-            (uint8_t)std::min(N.y(), (float)255.0),
-            (uint8_t)std::min(N.z(), (float)255.0),
-            255};
-        // return bodies[i].col;
+            (uint8_t)(bodies[idx].col.r * brightness),
+            (uint8_t)(bodies[idx].col.g * brightness),
+            (uint8_t)(bodies[idx].col.b * brightness),
+            255
+        };
     }
     return {0, 0, 0, 255};
 }
