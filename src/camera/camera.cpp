@@ -19,9 +19,8 @@ void Camera::update_view(Planet *bodies)
     );
 
     // printf("Camera lock position: (%.2f, %.2f, %.2f)\n", lock_pos.x(), lock_pos.y(), lock_pos.z());
-    printf("Camera offset: (%.2f, %.2f, %.2f)\n", offset.x(), offset.y(), offset.z());
-    printf("Camera lock_phi: %.2f, lock_theta: %.2f\n", lock_phi, lock_theta);
-    lock_pos = vec3(0,0,0); // temp
+    // printf("Camera offset: (%.2f, %.2f, %.2f)\n", offset.x(), offset.y(), offset.z());
+    // printf("Camera lock_phi: %.2f, lock_theta: %.2f\n", lock_phi, lock_theta);
     center = lock_pos + offset;
     // original
     // viewport_u = vec3(viewport_width, 0, 0);
