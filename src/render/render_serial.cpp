@@ -10,6 +10,7 @@ void render(
     const Trail* trails
 )
 {
+    ZoneScopedN("render_serial");
     for (int j = 0; j < HEIGHT; j++)
     {           
         for (int i = 0; i < WIDTH; i++)
@@ -41,10 +42,10 @@ color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails)
             };
             // return bodies[i].col;
         }
-        // if (hit_trail(trails[i], r))
-        // {
-        //     return bodies[i].col;
-        // }
+        if (hit_trail(trails[i], r))
+        {
+            return bodies[i].col;
+        }
     }
     return {0, 0, 0, 255};
 }
