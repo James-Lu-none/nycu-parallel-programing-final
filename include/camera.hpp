@@ -20,21 +20,18 @@ public:
     vec3 viewport_bottom_left;
     point3 pixel00_loc;
 
+    vec3 lock_pos;
+    vec3 offset;
     int lock_state = 0;
     double lock_phi = 0.0;
     double lock_theta = 0.0;
     double lock_radius = 10.0;
 
-    void update_viewport();
+    void update_view(Planet *bodies);
 
     Camera(double focal_len = 1.0, vec3 center = vec3(0, 0, -10), double viewport_height = 2.0);
 
-    void handle_event(const SDL_Event event, Planet *bodies);
-    void move(const vec3 &offset);
-    void zoom(double delta);
-
-    // Lock the camera center to the center of mass position
-    void lock_on(vec3 pos);
+    void handle_event(const SDL_Event event);
 };
 
 #endif
