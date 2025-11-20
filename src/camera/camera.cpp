@@ -18,18 +18,17 @@ Camera::Camera(double focal_len, vec3 center, double viewport_height)
     update_viewport();
 }
     
-void Camera::handle_event(const SDL_Event event)
+void Camera::handle_event(const SDL_Event event, Planet* bodies)
 {
     if (event.type == SDL_MOUSEWHEEL)
     {
-        if (event.wheel.y > 0)
+        if (lock)
         {
-            zoom(10);
+            return;
+        } else {
+            zoom(event.wheel.y * 10);
         }
-        else if (event.wheel.y < 0)
-        {
-            zoom(-10);
-        }
+        
         printf("camera_center.z: %f\n", center.z());
     }
 
@@ -37,12 +36,12 @@ void Camera::handle_event(const SDL_Event event)
     {
         if (event.key.keysym.sym == SDLK_l)
         {
-            lock_to_com = !lock_to_com;
-            printf("Camera lock_to_com: %s\n", lock_to_com ? "ON" : "OFF");
+            lock = !lock;
+            printf("Camera lock: %s\n", lock ? "ON" : "OFF");
             return;
         }
 
-        if (lock_to_com)
+        if (lock)
         {
             return;
         }
@@ -76,18 +75,18 @@ void Camera::move(const vec3 &offset)
 }
 
 void Camera::zoom(double delta) {
-    if (lock_to_com){
+    if (lock){
         lock_radius += delta;
         lock_radius = std::max(1.0, lock_radius);
         return;
     } else {
-        focal_length += delta * 0.1;
+        move(vec3(0, 0, delta));
     }
     update_viewport();
 }
 
-void Camera::lock_com(vec3 com_pos)
+void Camera::lock_on(vec3 pos)
 {
-    center = com_pos + vec3(0, 0, -lock_radius);
+    center = pos + vec3(0, 0, -lock_radius);
     update_viewport();
 }
