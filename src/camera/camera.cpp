@@ -22,13 +22,7 @@ void Camera::handle_event(const SDL_Event event, Planet* bodies)
 {
     if (event.type == SDL_MOUSEWHEEL)
     {
-        if (lock)
-        {
-            return;
-        } else {
-            zoom(event.wheel.y * 10);
-        }
-        
+        lock_radius += event.wheel.y * 10;
         printf("camera_center.z: %f\n", center.z());
     }
 
@@ -36,35 +30,41 @@ void Camera::handle_event(const SDL_Event event, Planet* bodies)
     {
         if (event.key.keysym.sym == SDLK_l)
         {
-            lock = !lock;
-            printf("Camera lock: %s\n", lock ? "ON" : "OFF");
+            lock_state++;
+            if (lock_state > NUM_BODIES) lock_state = 0;
+                printf("Camera lock: %s\n", lock_state ? "ON" : "OFF");
             return;
+        }
+        vec3 lock_pos = vec3(0, 0, 0);
+        if (lock_state == 0) {
+            lock_pos = get_center_of_mass(bodies);
+        }
+        else {
+            lock_pos = bodies[lock_state - 1].pos;
         }
 
-        if (lock)
+        switch (event.key.keysym.sym)
         {
-            return;
+        case SDLK_w:
+            lock_phi += 0.1;
+            break;
+        case SDLK_s:
+            lock_phi -= 0.1;
+            break;
+        case SDLK_a:
+            lock_theta += 0.1;
+            break;
+        case SDLK_d:
+            lock_theta -= 0.1;
+            break;
+        default:
+            break;
         }
-        else
-        {
-            switch (event.key.keysym.sym)
-            {
-            case SDLK_w:
-                move(vec3(0, 10, 0));
-                break;
-            case SDLK_s:
-                move(vec3(0, -10, 0));
-                break;
-            case SDLK_a:
-                move(vec3(-10, 0, 0));
-                break;
-            case SDLK_d:
-                move(vec3(10, 0, 0));
-                break;
-            default:
-                break;
-            }
-        }
+        center = lock_pos + vec3(
+            lock_radius * sin(lock_phi) * cos(lock_theta),
+            lock_radius * sin(lock_phi) * sin(lock_theta),
+            lock_radius * cos(lock_phi)
+        );
     }
 }
 

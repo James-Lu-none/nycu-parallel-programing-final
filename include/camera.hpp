@@ -20,7 +20,9 @@ public:
     vec3 viewport_bottom_left;
     point3 pixel00_loc;
 
-    bool lock = false;
+    int lock_state = 0;
+    double lock_phi = 0.0;
+    double lock_theta = 0.0;
     double lock_radius = 10.0;
 
     void update_viewport();
