@@ -81,36 +81,52 @@ int main(void)
     const float FIXED_DT = 0.0002;
     float accumulator = 0.0;
     Uint32 prev = SDL_GetTicks();
+    
+    // For tracking average frame time
+    float total_frame_time = 0.0;
+    int frame_count = 0;
+    
     #ifdef INIT_REQUIRED
         init_workers();
     #endif
     while (running)
     {
+        ZoneScopedN("MainLoop");
         FrameMark;
-        while (SDL_PollEvent(&ev))
+        
         {
-            camera.handle_event(ev);
-            if (ev.type == SDL_QUIT)
-                running = 0;
+            ZoneScopedN("EventHandling");
+            while (SDL_PollEvent(&ev))
+            {
+                camera.handle_event(ev);
+                if (ev.type == SDL_QUIT)
+                    running = 0;
+            }
+            camera.update_view(bodies);
         }
-        camera.update_view(bodies);
+        
         Uint32 now = SDL_GetTicks();
         float frame_dt = (now - prev) / 1000.0;
         prev = now;
         if (frame_dt > 0.05) frame_dt = 0.05;
         accumulator += frame_dt;
 
-        while (accumulator >= FIXED_DT) {
-            integrator(bodies, FIXED_DT);
-            accumulator -= FIXED_DT;
+        {
+            ZoneScopedN("PhysicsStep");
+            while (accumulator >= FIXED_DT) {
+                integrator(bodies, FIXED_DT);
+                accumulator -= FIXED_DT;
+            }
         }
 
-        // recenter(bodies);
-        for (int i = 0; i < NUM_BODIES; ++i)
-            trail_push(&trails[i], bodies[i].pos);
-
         {
-            ZoneScopedN("rendering");
+            ZoneScopedN("TrailUpdate");
+            for (int i = 0; i < NUM_BODIES; ++i)
+                trail_push(&trails[i], bodies[i].pos);
+        }
+        
+        {
+            ZoneScopedN("RenderStep");
             SDL_LockSurface(surf);
             render(
                 surf->pixels,
@@ -120,15 +136,20 @@ int main(void)
             );
             SDL_UnlockSurface(surf);
         }
+
         {
-            ZoneScopedN("blitting");
+            ZoneScopedN("DisplayUpdate");
             SDL_BlitSurface(surf, NULL, win_surf, NULL);
-        }
-        {
-            ZoneScopedN("updating window");
             SDL_UpdateWindowSurface(win);
         }
         
+        // Track frame time
+        frame_count++;
+        total_frame_time += frame_dt;
+        float avg_frame_time = total_frame_time / frame_count;
+        
+        TracyPlot("Frame Time (ms)", frame_dt * 1000.0);
+        TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
         
         SDL_Delay(16);
     }
