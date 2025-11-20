@@ -31,10 +31,10 @@ static void *accelerations_thread(void *arg)
         for (int j = i + 1; j < NUM_BODIES; ++j)
         {
             vec3 dpos = b[j].pos - b[i].pos;
-            double dist2 = dpos.length_squared() + EPSILON;
-            double dist = sqrt(dist2);
+            float dist2 = dpos.length_squared() + EPSILON;
+            float dist = sqrt(dist2);
 
-            double F = (G * b[i].mass * b[j].mass) / dist2;
+            float F = (G * b[i].mass * b[j].mass) / dist2;
             vec3 force = F * dpos / dist;
 
             acc[i] += force / b[i].mass;
