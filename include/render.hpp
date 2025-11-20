@@ -7,14 +7,14 @@
 #include "config.hpp"
 
 void render(
-    canvas &buf, 
+    canvas &buf,
     const Camera &camera,
     const Planet* bodies,
     const Trail* trails = nullptr
 );
 
 color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails);
-double hit_planet(const Planet &p, const ray &r);
+float hit_planet(const Planet &p, const ray &r);
 bool hit_trail(const Trail &t, const ray &r);
 
 void trail_push(Trail *t, vec3 pos);

@@ -2,4 +2,4 @@
 #include "planet.hpp"
 #include "config.hpp"
 
-void integrator(Planet b[], double dt);
+void integrator(Planet b[], float dt);

@@ -2,7 +2,7 @@
 #include "accelerations.hpp"
 #include "planet.hpp"
 
-void integrator(Planet b[], double dt)
+void integrator(Planet b[], float dt)
 {
     static int first = 1;
 

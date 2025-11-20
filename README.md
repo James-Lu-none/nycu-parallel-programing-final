@@ -243,10 +243,10 @@ A window **1200 × 800** opens; three coloured blobs chase each other in a r
 
 ```c
 typedef struct {
-    double x, y;      // position (px)
-    double vx, vy;    // velocity (px/s)
-    double mass;      // mass (arbitrary units)
-    double r;         // radius when drawn (px)
+    float x, y;      // position (px)
+    float vx, vy;    // velocity (px/s)
+    float mass;      // mass (arbitrary units)
+    float r;         // radius when drawn (px)
 } Planet;
 
 typedef struct {

@@ -9,9 +9,9 @@ class Camera
 {
 public:
     point3 center;
-    double focal_length;
-    double viewport_height;
-    double viewport_width;
+    float focal_length;
+    float viewport_height;
+    float viewport_width;
 
     vec3 viewport_u;
     vec3 viewport_v;
@@ -23,13 +23,13 @@ public:
     vec3 lock_pos;
     vec3 offset;
     int lock_state = 0;
-    double lock_phi = 0.0;
-    double lock_theta = 0.0;
-    double lock_radius = 10.0;
+    float lock_phi = 0.0;
+    float lock_theta = 0.0;
+    float lock_radius = 10.0;
 
     void update_view(Planet *bodies);
 
-    Camera(double focal_len = 1.0, vec3 center = vec3(0, 0, -10), double viewport_height = 2.0);
+    Camera(float focal_len = 1.0, vec3 center = vec3(0, 0, -10), float viewport_height = 2.0);
 
     void handle_event(const SDL_Event event);
 };

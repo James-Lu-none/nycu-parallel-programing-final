@@ -8,9 +8,9 @@ typedef struct
     const Planet *b;
     int t_id;
     int t_N;
-    double *t_ax;
-    double *t_ay;
-    double *t_az;
+    float *t_ax;
+    float *t_ay;
+    float *t_az;
 } AccelerationArgs;
 
 typedef struct
@@ -54,13 +54,13 @@ static void *accelerations_thread(void *arg)
         worker->hasWork = false;
         worker->done = false;
         pthread_mutex_unlock(&worker->mutex);
-        
+
         const Planet *b = A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
-        double *ax = A->t_ax;
-        double *ay = A->t_ay;
-        double *az = A->t_az;
+        float *ax = A->t_ax;
+        float *ay = A->t_ay;
+        float *az = A->t_az;
 
         int chunk = (NUM_BODIES + t_N - 1) / t_N;
         int i_start = t_id * chunk;
@@ -72,16 +72,16 @@ static void *accelerations_thread(void *arg)
             {
                 for (int j = 0; j < NUM_BODIES; ++j)
                 {
-                    double dx = b[j].x - b[i].x;
-                    double dy = b[j].y - b[i].y;
-                    double dz = b[j].z - b[i].z;
-                    double dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
-                    double dist = sqrt(dist2);
+                    float dx = b[j].x - b[i].x;
+                    float dy = b[j].y - b[i].y;
+                    float dz = b[j].z - b[i].z;
+                    float dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
+                    float dist = sqrt(dist2);
 
-                    double F = (G * b[i].mass * b[j].mass) / dist2;
-                    double fx = F * dx / dist;
-                    double fy = F * dy / dist;
-                    double fz = F * dz / dist;
+                    float F = (G * b[i].mass * b[j].mass) / dist2;
+                    float fx = F * dx / dist;
+                    float fy = F * dy / dist;
+                    float fz = F * dz / dist;
 
                     ax[i] += fx / b[i].mass;
                     ay[i] += fy / b[i].mass;
@@ -140,14 +140,14 @@ void accelerations(Planet b[])
 {
     int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
 
-    double **t_ax = (double **)malloc(sizeof(double *) * t_N);
-    double **t_ay = (double **)malloc(sizeof(double *) * t_N);
-    double **t_az = (double **)malloc(sizeof(double *) * t_N);
+    float **t_ax = (float **)malloc(sizeof(float *) * t_N);
+    float **t_ay = (float **)malloc(sizeof(float *) * t_N);
+    float **t_az = (float **)malloc(sizeof(float *) * t_N);
     for (int t = 0; t < t_N; ++t)
     {
-        t_ax[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_ay[t] = (double *)calloc(NUM_BODIES, sizeof(double));
-        t_az[t] = (double *)calloc(NUM_BODIES, sizeof(double));
+        t_ax[t] = (float *)calloc(NUM_BODIES, sizeof(float));
+        t_ay[t] = (float *)calloc(NUM_BODIES, sizeof(float));
+        t_az[t] = (float *)calloc(NUM_BODIES, sizeof(float));
 
         workers[t].args.b = b;
         workers[t].args.t_ax = t_ax[t];
@@ -184,7 +184,7 @@ void accelerations(Planet b[])
         }
         // printf("===== all threads are done! merging result =====\n");
     }
-    
+
     {
         ZoneScopedN("merge_results");
         for (int t = 0; t < t_N; ++t)

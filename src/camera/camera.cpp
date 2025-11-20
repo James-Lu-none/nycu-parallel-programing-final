@@ -48,12 +48,12 @@ void Camera::update_view(Planet *bodies)
     pixel00_loc = viewport_bottom_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 }
 
-Camera::Camera(double focal_len, vec3 center, double viewport_height)
+Camera::Camera(float focal_len, vec3 center, float viewport_height)
     : center(center), focal_length(focal_len), viewport_height(viewport_height)
 {
-    viewport_width = viewport_height * (double(WIDTH) / HEIGHT);
+    viewport_width = viewport_height * (float(WIDTH) / HEIGHT);
 }
-    
+
 void Camera::handle_event(const SDL_Event event)
 {
     if (event.type == SDL_MOUSEWHEEL)

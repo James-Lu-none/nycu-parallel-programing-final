@@ -9,8 +9,8 @@ typedef struct
     point3 pos;
     vec3 vel;
     vec3 acc;
-    double mass;
-    double r;
+    float mass;
+    float r;
     color col;
 } Planet;
 
