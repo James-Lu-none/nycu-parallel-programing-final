@@ -1,5 +1,6 @@
 set(RENDER_VARIANT "serial" CACHE STRING "render implementation variant")
 
+
 if(RENDER_VARIANT STREQUAL "serial")
     add_library(render render_serial.cpp)
 elseif(RENDER_VARIANT STREQUAL "pthread")
@@ -9,6 +10,8 @@ elseif(RENDER_VARIANT STREQUAL "pthread_simd")
 else()
     message(FATAL_ERROR "Unknown render variant: ${RENDER_VARIANT}")
 endif()
+
+target_sources(render PUBLIC ${PROJECT_SOURCE_DIR}/src/render/common.cpp)
 
 target_include_directories(render PUBLIC
     ${PROJECT_SOURCE_DIR}/include
