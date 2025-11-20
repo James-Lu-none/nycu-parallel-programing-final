@@ -5,7 +5,7 @@ vec3 get_center_of_mass(Planet b[])
 {
     ZoneScopedN("recenter");
     vec3 com_pos(0.0, 0.0, 0.0);
-    double total_mass = 0.0;
+    float total_mass = 0.0;
     for (int i = 0; i < NUM_BODIES; ++i)
     {
         com_pos += b[i].mass * b[i].pos;

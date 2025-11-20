@@ -10,11 +10,11 @@ using namespace std;
 
 canvas canvas_buf;
 
-vec3 random_vec3(double min, double max)
+vec3 random_vec3(float min, float max)
 {
-    ZoneScopedN("random_double");
-    double range = (max - min);
-    double div = RAND_MAX / range;
+    ZoneScopedN("random_float");
+    float range = (max - min);
+    float div = RAND_MAX / range;
     return vec3(
         min + (rand() / div),
         min + (rand() / div),
@@ -54,9 +54,9 @@ int main(void)
 
     const unsigned long colors[] = {0x00ff0000, 0x0000ff00, 0x000000ff, 0x00ffff00, 0x00ff00ff, 0x0000ffff};
     Planet bodies[NUM_BODIES];
-    const double S  = 140.0;
-    const double VS = 140.0;
-    const double m  = 200.0;
+    const float S  = 140.0;
+    const float VS = 140.0;
+    const float m  = 200.0;
 
     Camera camera = Camera();
 
@@ -78,8 +78,8 @@ int main(void)
 
     int running = 1;
     SDL_Event ev;
-    const double FIXED_DT = 0.0002;
-    double accumulator = 0.0;
+    const float FIXED_DT = 0.0002;
+    float accumulator = 0.0;
     Uint32 prev = SDL_GetTicks();
     #ifdef INIT_REQUIRED
         init_workers();
@@ -95,7 +95,7 @@ int main(void)
         }
         camera.update_view(bodies);
         Uint32 now = SDL_GetTicks();
-        double frame_dt = (now - prev) / 1000.0;
+        float frame_dt = (now - prev) / 1000.0;
         prev = now;
         if (frame_dt > 0.05) frame_dt = 0.05;
         accumulator += frame_dt;

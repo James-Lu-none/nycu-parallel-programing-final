@@ -29,7 +29,7 @@ color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails)
 {
     for (int i = 0; i < NUM_BODIES; ++i)
     {
-        double t = hit_planet(bodies[i], r);
+        float t = hit_planet(bodies[i], r);
         if (t >= 0)
         {
             vec3 N = 128 * (unit_vector(r.at(t) - bodies[i].pos) + vec3(1, 1, 1));
@@ -56,10 +56,10 @@ bool hit_trail(const Trail &t, const ray &r)
     for (int i = 0; i < t.size; ++i)
     {
         vec3 oc = t.pos[i] - r.origin();
-        double a = dot(r.direction(), r.direction());
-        double b = -2.0 * dot(r.direction(), oc);
-        double c = dot(oc, oc) - radius_squared;
-        double discriminant = b * b - 4 * a * c;
+        float a = dot(r.direction(), r.direction());
+        float b = -2.0 * dot(r.direction(), oc);
+        float c = dot(oc, oc) - radius_squared;
+        float discriminant = b * b - 4 * a * c;
         if (discriminant >= 0) {
             return true;
         }
@@ -67,13 +67,13 @@ bool hit_trail(const Trail &t, const ray &r)
     return false;
 }
 
-double hit_planet(const Planet &p, const ray &r)
+float hit_planet(const Planet &p, const ray &r)
 {
     vec3 oc = p.pos - r.origin();
-    double a = dot(r.direction(), r.direction());
-    double b = -2.0 * dot(r.direction(), oc);
-    double c = dot(oc, oc) - p.r * p.r;
-    double discriminant = b * b - 4 * a * c;
+    float a = dot(r.direction(), r.direction());
+    float b = -2.0 * dot(r.direction(), oc);
+    float c = dot(oc, oc) - p.r * p.r;
+    float discriminant = b * b - 4 * a * c;
     if (discriminant < 0)
     {
         return -1.0;

@@ -52,7 +52,7 @@ static void *accelerations_thread(void *arg)
         worker->hasWork = false;
         worker->done = false;
         pthread_mutex_unlock(&worker->mutex);
-        
+
         const Planet *b = A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
@@ -168,7 +168,7 @@ void accelerations(Planet b[])
         }
         // printf("===== all threads are done! merging result =====\n");
     }
-    
+
     {
         ZoneScopedN("merge_results");
         for (int t = 0; t < t_N; ++t)
