@@ -163,7 +163,8 @@ color get_ray_color_simd(const ray &r, const Planet *bodies, const Trail *trails
     __m256 best_t = _mm256_set1_ps(1e30f);
     __m256 best_index = _mm256_set1_ps(-1.0f);
 
-    for (int i = 0; i < NUM_BODIES; i += 8)
+    int i = 0;
+    for (; i < NUM_BODIES - (NUM_BODIES % 8); i += 8)
     {
         // Load positions
         __m256 px = _mm256_set_ps(
@@ -258,6 +259,15 @@ color get_ray_color_simd(const ray &r, const Planet *bodies, const Trail *trails
         {
             t_best = t_values[k];
             final_idx = (int)idx_values[k];
+        }
+    }
+
+    for (; i < NUM_BODIES; ++i)
+    {
+        float t_i = hit_planet(bodies[i], r);
+        if (t_i >= 0 && t_i < t_best) {
+            t_best = t_i;
+            final_idx = i;
         }
     }
 
