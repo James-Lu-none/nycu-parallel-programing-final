@@ -22,11 +22,6 @@ vec3 random_vec3(double min, double max)
     );
 }
 
-void update_camera()
-{
-    ZoneScopedN("update_camera");
-}
-
 int main(void)
 {
     tracy::SetThreadName("main_thread");
@@ -51,7 +46,6 @@ int main(void)
         32,
         SDL_PIXELFORMAT_ARGB8888
     );
-    printf("pitch: %d bytes\n", surf->pitch);
 
     if (!surf) {
         fprintf(stderr, "SDL_GetWindowSurface: %s\n", SDL_GetError());
@@ -95,33 +89,7 @@ int main(void)
         FrameMark;
         while (SDL_PollEvent(&ev))
         {
-            if (ev.type == SDL_QUIT)
-                running = 0;
-
-            if (ev.type == SDL_MOUSEWHEEL)
-            {
-                if (ev.wheel.y > 0)
-                {
-                    camera.zoom(10);
-                }
-                else if (ev.wheel.y < 0)
-                {
-                    camera.zoom(-10);
-                }
-                printf("camera_center.z: %f\n", camera.center.z());
-            }
-            
-            if (ev.type == SDL_KEYDOWN)
-            {
-                switch (ev.key.keysym.sym)
-                {
-                case SDLK_w: camera.move_up(10); break;
-                case SDLK_s: camera.move_down(10); break;
-                case SDLK_a: camera.move_left(10); break;
-                case SDLK_d: camera.move_right(10); break;
-                }
-                printf("camera_center: (%f, %f, %f)\n", camera.center.x(), camera.center.y(), camera.center.z());
-            }
+            camera.handle_event(ev);
         }
         Uint32 now = SDL_GetTicks();
         double frame_dt = (now - prev) / 1000.0;
