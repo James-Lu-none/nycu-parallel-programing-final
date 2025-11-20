@@ -18,14 +18,29 @@ void Camera::update_view(Planet *bodies)
         lock_radius * cos(lock_phi)
     );
 
-    printf("Camera lock position: (%.2f, %.2f, %.2f)\n", lock_pos.x(), lock_pos.y(), lock_pos.z());
+    // printf("Camera lock position: (%.2f, %.2f, %.2f)\n", lock_pos.x(), lock_pos.y(), lock_pos.z());
     printf("Camera offset: (%.2f, %.2f, %.2f)\n", offset.x(), offset.y(), offset.z());
 
     center = lock_pos + offset;
-    vec3 unit_dir = unit_vector(-offset);
-    viewport_u = vec3(viewport_width, 0, 0);
-    viewport_v = vec3(0, viewport_height, 0);
-    vec3 focal_offset = vec3(0, 0, focal_length);
+    // original
+    // viewport_u = vec3(viewport_width, 0, 0);
+    // viewport_v = vec3(0, viewport_height, 0);
+    // vec3 focal_offset =  vec3(0, 0, focal_length);
+
+    // after change of basis
+    vec3 forward = unit_vector(-offset);
+    // Define world up vector
+    vec3 world_up = vec3(0, 1, 0); // or vec3(0, 1, 0) depending on your coordinate system
+    // Calculate right vector (perpendicular to forward and world_up)
+    vec3 right = unit_vector(cross(forward, world_up));
+    // Calculate actual up vector (perpendicular to forward and right)
+    vec3 up = cross(right, forward);
+
+    viewport_u = right * viewport_width;
+    viewport_v = up * viewport_height;
+
+    vec3 focal_offset = forward * focal_length;
+    printf("focal_offset: (%.2f, %.2f, %.2f)\n", focal_offset.x(), focal_offset.y(), focal_offset.z());
 
     pixel_delta_u = viewport_u / WIDTH;
     pixel_delta_v = viewport_v / HEIGHT;
