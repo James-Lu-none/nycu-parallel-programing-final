@@ -89,7 +89,7 @@ void *render_thread(void *args_void){
             vec3 ray_direction = pixel_center - camera->center;
             ray r(camera->center, ray_direction);
 
-            color pixel_color = get_ray_color_simd(r, bodies, trails);
+            color pixel_color = get_ray_color(r, bodies, trails);
             buf[(j - start_row) * WIDTH + i] = pixel_color;
         }
     }
