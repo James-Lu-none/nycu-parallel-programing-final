@@ -3,14 +3,12 @@
 #include "vec3.hpp"
 #include "ray.hpp"
 #include "canvas.hpp"
+#include "camera.hpp"
 #include "config.hpp"
 
 void render(
     canvas &buf, 
-    const point3 &camera_center,
-    const vec3 &pixel00_loc,
-    const vec3 &pixel_delta_u,
-    const vec3 &pixel_delta_v,
+    const Camera &camera,
     const Planet* bodies,
     const Trail* trails = nullptr
 );

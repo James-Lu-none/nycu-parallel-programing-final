@@ -5,10 +5,7 @@
 
 void render(
     canvas &buf, 
-    const point3 &camera_center,
-    const vec3 &pixel00_loc,
-    const vec3 &pixel_delta_u,
-    const vec3 &pixel_delta_v,
+    const Camera &camera,
     const Planet* bodies,
     const Trail* trails
 )
@@ -17,9 +14,9 @@ void render(
     {           
         for (int i = 0; i < WIDTH; i++)
         {
-            vec3 pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
-            vec3 ray_direction = pixel_center - camera_center;
-            ray r(camera_center, ray_direction);
+            vec3 pixel_center = camera.pixel00_loc + (i * camera.pixel_delta_u) + (j * camera.pixel_delta_v);
+            vec3 ray_direction = pixel_center - camera.center;
+            ray r(camera.center, ray_direction);
 
             color pixel_color = get_ray_color(r, bodies, trails);
             buf.pixels[j * WIDTH + i] = pixel_color;

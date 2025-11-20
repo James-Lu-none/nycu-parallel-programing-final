@@ -2,6 +2,7 @@
 #include "planet.hpp"
 #include "render.hpp"
 #include "integrator.hpp"
+#include "camera.hpp"
 
 #include "config.hpp"
 
@@ -63,19 +64,7 @@ int main(void)
     const double VS = 140.0;
     const double m  = 200.0;
 
-    auto focal_length = 1.0;
-    auto viewport_height = 2.0;
-    auto viewport_width = viewport_height * (double(WIDTH) / HEIGHT);
-    point3 camera_center = point3(0, 0, 0);
-
-    // Calculate the vectors across the horizontal and down the vertical viewport edges.
-    vec3 viewport_u = vec3(viewport_width, 0, 0);
-    vec3 viewport_v = vec3(0, viewport_height, 0);
-    vec3 pixel_delta_u = viewport_u / WIDTH;
-    vec3 pixel_delta_v = viewport_v / HEIGHT;
-
-    vec3 viewport_bottom_left = camera_center + vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
-    point3 pixel00_loc = viewport_bottom_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+    Camera camera = Camera();
 
     for (int i = 0; i < NUM_BODIES; ++i){
         bodies[i] = (Planet){
@@ -113,41 +102,26 @@ int main(void)
             {
                 if (ev.wheel.y > 0)
                 {
-                    camera_center = camera_center + vec3(0, 0, 10);
+                    camera.zoom(10);
                 }
                 else if (ev.wheel.y < 0)
                 {
-                    camera_center = camera_center - vec3(0, 0, 10);
+                    camera.zoom(-10);
                 }
-                printf("camera_center.z: %f\n", camera_center.z());
+                printf("camera_center.z: %f\n", camera.center.z());
             }
             
             if (ev.type == SDL_KEYDOWN)
             {
                 switch (ev.key.keysym.sym)
                 {
-                case SDLK_w:
-                    camera_center = camera_center + vec3(0, 10, 0);
-                    break;
-                case SDLK_s:
-                    camera_center = camera_center - vec3(0, 10, 0);
-                    break;
-                case SDLK_a:
-                    camera_center = camera_center - vec3(10, 0, 0);
-                    break;
-                case SDLK_d:
-                    camera_center = camera_center + vec3(10, 0, 0);
-                    break;
+                case SDLK_w: camera.move_up(10); break;
+                case SDLK_s: camera.move_down(10); break;
+                case SDLK_a: camera.move_left(10); break;
+                case SDLK_d: camera.move_right(10); break;
                 }
-                printf("camera_center: (%f, %f, %f)\n", camera_center.x(), camera_center.y(), camera_center.z());
+                printf("camera_center: (%f, %f, %f)\n", camera.center.x(), camera.center.y(), camera.center.z());
             }
-            viewport_u = vec3(viewport_width, 0, 0);
-            viewport_v = vec3(0, viewport_height, 0);
-            pixel_delta_u = viewport_u / WIDTH;
-            pixel_delta_v = viewport_v / HEIGHT;
-
-            viewport_bottom_left = camera_center + vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
-            pixel00_loc = viewport_bottom_left + 0.5 * (pixel_delta_u + pixel_delta_v);
         }
         Uint32 now = SDL_GetTicks();
         double frame_dt = (now - prev) / 1000.0;
@@ -166,10 +140,7 @@ int main(void)
         
         render(
             canvas_buf,
-            camera_center,
-            pixel00_loc,
-            pixel_delta_u,
-            pixel_delta_v,
+            camera,
             bodies,
             trails
         );
