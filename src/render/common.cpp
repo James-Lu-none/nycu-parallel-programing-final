@@ -39,64 +39,72 @@ float hit_planet(const Planet &p, const ray &r)
     }
 }
 
-bool hit_x_axis(const ray &r)
+color background(const ray &r)
 {
     const vec3 O = r.origin();
     const vec3 D = r.direction();
     constexpr float radius2 = 5.0f;
-
-    // === X-axis cylinder: y^2 + z^2 = r^2 ===
+    color hit_color = {0,0,0,255};
+    float min_t = 1e30;
+    // X-axis cylinder: y^2 + z^2 = r^2
     {
         float a = D.y() * D.y() + D.z() * D.z();
         float b = 2.0f * (O.y() * D.y() + O.z() * D.z());
         float c = O.y() * O.y() + O.z() * O.z() - radius2;
-
+        
         float disc = b * b - 4 * a * c;
-        if (disc >= 0.0f)
-            return true;
+        float t = (-b - sqrt(disc)) / (2.0 * a);
+        if (disc >= 0.0f && t > 0.0f && t < min_t)
+        {
+            min_t = t;
+            hit_color = {255, 0, 0, 255};
+        }
     }
 
-    return false;
-}
-
-bool hit_y_axis(const ray &r)
-{
-    const vec3 O = r.origin();
-    const vec3 D = r.direction();
-    constexpr float radius2 = 5.0f;
-
-    // === Y-axis cylinder: x^2 + z^2 = r^2 ===
+    // Y-axis cylinder: x^2 + z^2 = r^2
     {
         float a = D.x() * D.x() + D.z() * D.z();
         float b = 2.0f * (O.x() * D.x() + O.z() * D.z());
         float c = O.x() * O.x() + O.z() * O.z() - radius2;
 
         float disc = b * b - 4 * a * c;
-        if (disc >= 0.0f)
-            return true;
+        float t = (-b - sqrt(disc)) / (2.0 * a);
+        if (disc >= 0.0f && t > 0.0f && t < min_t)
+        {
+            min_t = t;
+            hit_color = {0, 255, 0, 255};
+        }
     }
-
-    return false;
-}
-
-bool hit_z_axis(const ray &r)
-{
-    const vec3 O = r.origin();
-    const vec3 D = r.direction();
-    constexpr float radius2 = 5.0f;
-
-    // === Z-axis cylinder: x^2 + y^2 = r^2 ===
+    // Z-axis cylinder: x^2 + y^2 = r^2
     {
         float a = D.x() * D.x() + D.y() * D.y();
         float b = 2.0f * (O.x() * D.x() + O.y() * D.y());
         float c = O.x() * O.x() + O.y() * O.y() - radius2;
 
         float disc = b * b - 4 * a * c;
-        if (disc >= 0.0f)
-            return true;
+        float t = (-b - sqrt(disc)) / (2.0 * a);
+        if (disc >= 0.0f && t > 0.0f && t < min_t)
+        {
+            min_t = t;
+            hit_color = {0, 0, 255, 255};
+        }
+    }
+    // center: x^2 + y^2 + z^2 = r^2
+    {
+        float a = D.x() * D.x() + D.y() * D.y() + D.z() * D.z();
+        float b = 2.0f * (O.x() * D.x() + O.y() * D.y() + O.z() * D.z());
+        float c = O.x() * O.x() + O.y() * O.y() + O.z() * O.z() - radius2*radius2;
+
+        float disc = b * b - 4 * a * c;
+        float t = (-b - sqrt(disc)) / (2.0 * a);
+        if (disc >= 0.0f && t > 0.0f && t < min_t)
+        {
+            min_t = (-b - sqrt(disc)) / (2.0 * a);
+            hit_color = {255, 255, 255, 255};
+        }
     }
 
-    return false;
+    return hit_color;
 }
 
 color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
@@ -126,20 +134,7 @@ color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
         };
     }
 
-    if (hit_x_axis(r))
-    {
-        return {255, 0, 0, 255};
-    }
-    if (hit_y_axis(r))
-    {
-        return {0, 255, 0, 255};
-    }
-    if (hit_z_axis(r))
-    {
-        return {0, 0, 255, 255};
-    }
-
-    return {0, 0, 0, 255};
+    return background(r);
 }
 
 
