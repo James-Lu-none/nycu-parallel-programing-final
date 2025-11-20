@@ -39,6 +39,66 @@ float hit_planet(const Planet &p, const ray &r)
     }
 }
 
+bool hit_x_axis(const ray &r)
+{
+    const vec3 O = r.origin();
+    const vec3 D = r.direction();
+    constexpr float radius2 = 5.0f;
+
+    // === X-axis cylinder: y^2 + z^2 = r^2 ===
+    {
+        float a = D.y() * D.y() + D.z() * D.z();
+        float b = 2.0f * (O.y() * D.y() + O.z() * D.z());
+        float c = O.y() * O.y() + O.z() * O.z() - radius2;
+
+        float disc = b * b - 4 * a * c;
+        if (disc >= 0.0f)
+            return true;
+    }
+
+    return false;
+}
+
+bool hit_y_axis(const ray &r)
+{
+    const vec3 O = r.origin();
+    const vec3 D = r.direction();
+    constexpr float radius2 = 5.0f;
+
+    // === Y-axis cylinder: x^2 + z^2 = r^2 ===
+    {
+        float a = D.x() * D.x() + D.z() * D.z();
+        float b = 2.0f * (O.x() * D.x() + O.z() * D.z());
+        float c = O.x() * O.x() + O.z() * O.z() - radius2;
+
+        float disc = b * b - 4 * a * c;
+        if (disc >= 0.0f)
+            return true;
+    }
+
+    return false;
+}
+
+bool hit_z_axis(const ray &r)
+{
+    const vec3 O = r.origin();
+    const vec3 D = r.direction();
+    constexpr float radius2 = 5.0f;
+
+    // === Z-axis cylinder: x^2 + y^2 = r^2 ===
+    {
+        float a = D.x() * D.x() + D.y() * D.y();
+        float b = 2.0f * (O.x() * D.x() + O.y() * D.y());
+        float c = O.x() * O.x() + O.y() * O.y() - radius2;
+
+        float disc = b * b - 4 * a * c;
+        if (disc >= 0.0f)
+            return true;
+    }
+
+    return false;
+}
+
 color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
 {
     float t = 1e30;
@@ -57,7 +117,7 @@ color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
         vec3 N = unit_vector(hit_point - bodies[idx].pos);
         // calculate brightness with dot product of normal and light direction
         float brightness = 0.2f + 0.8f * std::max(dot(N, light_dir), 0.0f);
-        
+
         return {
             (uint8_t)(bodies[idx].col.r * brightness),
             (uint8_t)(bodies[idx].col.g * brightness),
@@ -65,6 +125,20 @@ color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
             255
         };
     }
+
+    if (hit_x_axis(r))
+    {
+        return {255, 0, 0, 255};
+    }
+    if (hit_y_axis(r))
+    {
+        return {0, 255, 0, 255};
+    }
+    if (hit_z_axis(r))
+    {
+        return {0, 0, 255, 255};
+    }
+
     return {0, 0, 0, 255};
 }
 
