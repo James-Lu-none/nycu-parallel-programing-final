@@ -8,9 +8,7 @@ typedef struct
     const Planet *b;
     int t_id;
     int t_N;
-    float *t_ax;
-    float *t_ay;
-    float *t_az;
+    vec3 *t_acc;
 } AccelerationArgs;
 
 typedef struct
@@ -58,9 +56,7 @@ static void *accelerations_thread(void *arg)
         const Planet *b = A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
-        float *ax = A->t_ax;
-        float *ay = A->t_ay;
-        float *az = A->t_az;
+        vec3 *acc = A->t_acc;
 
         int chunk = (NUM_BODIES + t_N - 1) / t_N;
         int i_start = t_id * chunk;
@@ -72,20 +68,14 @@ static void *accelerations_thread(void *arg)
             {
                 for (int j = 0; j < NUM_BODIES; ++j)
                 {
-                    float dx = b[j].x - b[i].x;
-                    float dy = b[j].y - b[i].y;
-                    float dz = b[j].z - b[i].z;
-                    float dist2 = dx * dx + dy * dy + dz * dz + EPSILON;
-                    float dist = sqrt(dist2);
+                    vec3 dpos = b[j].pos - b[i].pos;
+                    double dist2 = dpos.length_squared() + EPSILON;
+                    double dist = sqrt(dist2);
 
-                    float F = (G * b[i].mass * b[j].mass) / dist2;
-                    float fx = F * dx / dist;
-                    float fy = F * dy / dist;
-                    float fz = F * dz / dist;
+                    double F = (G * b[i].mass * b[j].mass) / dist2;
+                    vec3 force = F * dpos / dist;
 
-                    ax[i] += fx / b[i].mass;
-                    ay[i] += fy / b[i].mass;
-                    az[i] += fz / b[i].mass;
+                    acc[i] += force / b[i].mass;
                 }
             }
         }
@@ -140,23 +130,17 @@ void accelerations(Planet b[])
 {
     int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
 
-    float **t_ax = (float **)malloc(sizeof(float *) * t_N);
-    float **t_ay = (float **)malloc(sizeof(float *) * t_N);
-    float **t_az = (float **)malloc(sizeof(float *) * t_N);
+    vec3 **t_acc = new vec3*[t_N];
     for (int t = 0; t < t_N; ++t)
     {
-        t_ax[t] = (float *)calloc(NUM_BODIES, sizeof(float));
-        t_ay[t] = (float *)calloc(NUM_BODIES, sizeof(float));
-        t_az[t] = (float *)calloc(NUM_BODIES, sizeof(float));
+        t_acc[t] = new vec3[NUM_BODIES]();
 
         workers[t].args.b = b;
-        workers[t].args.t_ax = t_ax[t];
-        workers[t].args.t_ay = t_ay[t];
-        workers[t].args.t_az = t_az[t];
+        workers[t].args.t_acc = t_acc[t];
     }
 
     for (int i = 0; i < NUM_BODIES; ++i)
-        b[i].ax = b[i].ay = b[i].az = 0.0;
+        b[i].acc = vec3(0.0, 0.0, 0.0);
 
     // Wake up all workers
     {
@@ -191,17 +175,11 @@ void accelerations(Planet b[])
         {
             for (int i = 0; i < NUM_BODIES; ++i)
             {
-                b[i].ax += t_ax[t][i];
-                b[i].ay += t_ay[t][i];
-                b[i].az += t_az[t][i];
+                b[i].acc += t_acc[t][i];
             }
-            free(t_ax[t]);
-            free(t_ay[t]);
-            free(t_az[t]);
+            delete[] t_acc[t];
         }
 
-        free(t_ax);
-        free(t_ay);
-        free(t_az);
+        delete[] t_acc;
     }
 }
