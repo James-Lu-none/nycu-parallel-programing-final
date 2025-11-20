@@ -1,9 +1,18 @@
 #include "planet.hpp"
 #include "vec3.hpp"
 
-void get_recenter(Planet b[])
+vec3 get_center_of_mass(Planet b[])
 {
     ZoneScopedN("recenter");
+    vec3 com_pos(0.0, 0.0, 0.0);
+    double total_mass = 0.0;
+    for (int i = 0; i < NUM_BODIES; ++i)
+    {
+        com_pos += b[i].mass * b[i].pos;
+        total_mass += b[i].mass;
+    }
+    com_pos = com_pos / total_mass;
+    return com_pos;
 }
 
 void trail_push(Trail *t, vec3 pos)

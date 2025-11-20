@@ -21,4 +21,7 @@ typedef struct
     int size;
 } Trail;
 
+vec3 get_center_of_mass(Planet b[]);
+void trail_push(Trail *t, vec3 pos);
+
 #endif
