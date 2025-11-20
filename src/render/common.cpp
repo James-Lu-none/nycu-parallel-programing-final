@@ -57,7 +57,8 @@ color background(const ray &r)
         if (disc >= 0.0f && t > 0.0f && t < min_t)
         {
             min_t = t;
-            hit_color = {255, 0, 0, 255};
+            uint8_t brightness = r.at(t).x() > 0 ? 255 : 70;
+            hit_color = {brightness, 0, 0, 255};
         }
     }
 
@@ -72,7 +73,8 @@ color background(const ray &r)
         if (disc >= 0.0f && t > 0.0f && t < min_t)
         {
             min_t = t;
-            hit_color = {0, 255, 0, 255};
+            uint8_t brightness = r.at(t).y() > 0 ? 255 : 70;
+            hit_color = {0, brightness, 0, 255};
         }
     }
     // Z-axis cylinder: x^2 + y^2 = r^2
@@ -82,11 +84,12 @@ color background(const ray &r)
         float c = O.x() * O.x() + O.y() * O.y() - radius2;
 
         float disc = b * b - 4 * a * c;
-        float t = (-b - sqrt(disc)) / (2.0 * a);
+        float t = (-b - sqrt(disc)) / (2.0f * a);
         if (disc >= 0.0f && t > 0.0f && t < min_t)
         {
             min_t = t;
-            hit_color = {0, 0, 255, 255};
+            uint8_t brightness = r.at(t).z() > 0 ? 255 : 70;
+            hit_color = {0, 0, brightness, 255};
         }
     }
     // center: x^2 + y^2 + z^2 = r^2
