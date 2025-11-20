@@ -108,17 +108,28 @@ int main(void)
         // recenter(bodies);
         for (int i = 0; i < NUM_BODIES; ++i)
             trail_push(&trails[i], bodies[i].pos);
-        SDL_LockSurface(surf);
-        render(
-            surf->pixels,
-            camera,
-            bodies,
-            trails
-        );
-        SDL_UnlockSurface(surf);
 
-        SDL_BlitSurface(surf, NULL, win_surf, NULL);
-        SDL_UpdateWindowSurface(win);
+        {
+            ZoneScopedN("rendering");
+            SDL_LockSurface(surf);
+            render(
+                surf->pixels,
+                camera,
+                bodies,
+                trails
+            );
+            SDL_UnlockSurface(surf);
+        }
+        {
+            ZoneScopedN("blitting");
+            SDL_BlitSurface(surf, NULL, win_surf, NULL);
+        }
+        {
+            ZoneScopedN("updating window");
+            SDL_UpdateWindowSurface(win);
+        }
+        
+        
         SDL_Delay(16);
     }
     #ifdef INIT_REQUIRED

@@ -72,6 +72,7 @@ float hit_planet(const Planet &p, const ray &r)
 }
 
 void *render_thread(void *args_void){
+    ZoneScopedN("rendering thread");
     RenderTaskArgs *args = (RenderTaskArgs *)args_void;
     const int start_row = args->start_row;
     const int end_row = args->end_row;
