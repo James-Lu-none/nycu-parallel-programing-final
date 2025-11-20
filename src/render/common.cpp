@@ -297,24 +297,5 @@ color get_ray_color_simd(const ray &r, const Planet* bodies, const Trail* trails
             }
         }
     }
-
-    // === scalar tail ===
-    for (; i < NUM_BODIES; ++i)
-    {
-        float t = hit_planet(bodies[i], r);
-        if (t >= 0.0f)
-        {
-            vec3 N = 128.0f * (unit_vector(r.at(t) - bodies[i].pos) + vec3(1,1,1));
-            return {
-                (uint8_t)std::min(N.x(), 255.0f),
-                (uint8_t)std::min(N.y(), 255.0f),
-                (uint8_t)std::min(N.z(), 255.0f),
-                255
-            };
-        }
-        if (hit_trail(trails[i], r))
-            return bodies[i].col;
-    }
-
     return {0,0,0,255};
 }
