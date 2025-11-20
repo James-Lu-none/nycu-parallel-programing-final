@@ -4,7 +4,7 @@
 #include "ray.hpp"
 
 void render(
-    canvas &buf, 
+    canvas &buf,
     const Camera &camera,
     const Planet* bodies,
     const Trail* trails
@@ -12,7 +12,7 @@ void render(
 {
     ZoneScopedN("render_serial");
     for (int j = 0; j < HEIGHT; j++)
-    {           
+    {
         for (int i = 0; i < WIDTH; i++)
         {
             vec3 pixel_center = camera.pixel00_loc + (i * camera.pixel_delta_u) + (j * camera.pixel_delta_v);
@@ -31,7 +31,7 @@ color get_ray_color(const ray &r, const Planet* bodies, const Trail* trails)
     {
         double t = hit_planet(bodies[i], r);
         if (t >= 0)
-        {   
+        {
             vec3 N = 128 * (unit_vector(r.at(t) - bodies[i].pos) + vec3(1, 1, 1));
             // printf("N: (%f, %f, %f)\n", N.x(), N.y(), N.z());
             return {
@@ -78,7 +78,7 @@ double hit_planet(const Planet &p, const ray &r)
     {
         return -1.0;
     }
-    else 
+    else
     {
         return (-b - sqrt(discriminant)) / (2.0 * a);
     }
