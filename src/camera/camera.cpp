@@ -59,6 +59,8 @@ void Camera::handle_event(const SDL_Event event)
     if (event.type == SDL_MOUSEWHEEL)
     {
         lock_radius += event.wheel.y * -10;
+        if (lock_radius < 50.0f)
+            lock_radius = 50.0f;
     }
 
     if (event.type == SDL_KEYDOWN)
