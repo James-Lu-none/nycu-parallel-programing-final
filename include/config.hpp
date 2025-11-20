@@ -11,7 +11,7 @@
 #define WIDTH 1200
 #define HEIGHT 800
 
-#define NUM_BODIES 3
+#define NUM_BODIES 50
 #define TRAIL_BUF 5
 #define MIN_DIST 1.5
 
