@@ -89,10 +89,11 @@ int main(void)
         FrameMark;
         while (SDL_PollEvent(&ev))
         {
-            camera.handle_event(ev, bodies);
+            camera.handle_event(ev);
             if (ev.type == SDL_QUIT)
                 running = 0;
         }
+        camera.update_view(bodies);
         Uint32 now = SDL_GetTicks();
         double frame_dt = (now - prev) / 1000.0;
         prev = now;
