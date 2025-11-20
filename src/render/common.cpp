@@ -39,24 +39,27 @@ float hit_planet(const Planet &p, const ray &r)
 
 color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
 {
+    float t = 1e30;
+    int idx = -1;
     for (int i = 0; i < NUM_BODIES; ++i)
     {
-        float t = hit_planet(bodies[i], r);
-        if (t >= 0)
-        {
-            vec3 N = 128 * (unit_vector(r.at(t) - bodies[i].pos) + vec3(1, 1, 1));
-            // printf("N: (%f, %f, %f)\n", N.x(), N.y(), N.z());
-            return {
-                (uint8_t)std::min(N.x(), (float)255.0),
-                (uint8_t)std::min(N.y(), (float)255.0),
-                (uint8_t)std::min(N.z(), (float)255.0),
-                255};
-            // return bodies[i].col;
+        float t_i = hit_planet(bodies[i], r);
+        if (t_i >= 0 && t_i < t) {
+            t = t_i;
+            idx = i;
         }
-        // if (hit_trail(trails[i], r))
-        // {
-        //     return bodies[i].col;
-        // }
+    }
+    if (t >= 0 && idx != -1)
+    {
+        vec3 hit_point = r.at(t);
+        vec3 N = 128 * (unit_vector(r.at(t) - bodies[idx].pos) + vec3(1, 1, 1));
+        // printf("N: (%f, %f, %f)\n", N.x(), N.y(), N.z());
+        return {
+            (uint8_t)std::min(N.x(), (float)255.0),
+            (uint8_t)std::min(N.y(), (float)255.0),
+            (uint8_t)std::min(N.z(), (float)255.0),
+            255};
+        // return bodies[i].col;
     }
     return {0, 0, 0, 255};
 }
@@ -189,9 +192,27 @@ color get_ray_color_simd(const ray &r, const Planet* bodies, const Trail* trails
                     };
                 }
             }
+        }
+        for (int k = 0; k < 8; ++k)
+        {
+            int idx = i + k;
+            if (idx >= NUM_BODIES) break;
 
-            if (hit_trail(trails[idx], r)) {
-                return bodies[idx].col;
+            if (disc_arr[k] >= 0.0f)
+            {
+                float t = (-b_arr[k] - std::sqrt(disc_arr[k])) / (2.0f * a_scalar);
+                if (t >= 0.0f)
+                {
+                    vec3 hit_point = r.at(t);
+                    vec3 N = 128.0f * (unit_vector(hit_point - bodies[idx].pos) + vec3(1,1,1));
+
+                    return {
+                        (uint8_t)std::min(N.x(), 255.0f),
+                        (uint8_t)std::min(N.y(), 255.0f),
+                        (uint8_t)std::min(N.z(), 255.0f),
+                        255
+                    };
+                }
             }
         }
     }
