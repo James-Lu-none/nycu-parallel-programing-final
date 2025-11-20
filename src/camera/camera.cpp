@@ -13,14 +13,15 @@ void Camera::update_view(Planet *bodies)
     }
 
     offset = vec3(
-        lock_radius * sin(lock_phi) * cos(lock_theta),
-        lock_radius * sin(lock_phi) * sin(lock_theta),
-        lock_radius * cos(lock_phi)
+        lock_radius * cos(lock_theta),
+        lock_radius * sin(lock_theta),
+        lock_radius * sin(lock_phi)
     );
 
     // printf("Camera lock position: (%.2f, %.2f, %.2f)\n", lock_pos.x(), lock_pos.y(), lock_pos.z());
     printf("Camera offset: (%.2f, %.2f, %.2f)\n", offset.x(), offset.y(), offset.z());
-
+    printf("Camera lock_phi: %.2f, lock_theta: %.2f\n", lock_phi, lock_theta);
+    lock_pos = vec3(0,0,0); // temp
     center = lock_pos + offset;
     // original
     // viewport_u = vec3(viewport_width, 0, 0);
@@ -30,7 +31,7 @@ void Camera::update_view(Planet *bodies)
     // after change of basis
     vec3 forward = unit_vector(-offset);
     // Define world up vector
-    vec3 world_up = vec3(0, 1, 0); // or vec3(0, 1, 0) depending on your coordinate system
+    vec3 world_up = vec3(0, 0, 1); // or vec3(0, 1, 0) depending on your coordinate system
     // Calculate right vector (perpendicular to forward and world_up)
     vec3 right = unit_vector(cross(forward, world_up));
     // Calculate actual up vector (perpendicular to forward and right)
@@ -40,7 +41,7 @@ void Camera::update_view(Planet *bodies)
     viewport_v = up * viewport_height;
 
     vec3 focal_offset = forward * focal_length;
-    printf("focal_offset: (%.2f, %.2f, %.2f)\n", focal_offset.x(), focal_offset.y(), focal_offset.z());
+    // printf("focal_offset: (%.2f, %.2f, %.2f)\n", focal_offset.x(), focal_offset.y(), focal_offset.z());
 
     pixel_delta_u = viewport_u / WIDTH;
     pixel_delta_v = viewport_v / HEIGHT;
@@ -68,16 +69,16 @@ void Camera::handle_event(const SDL_Event event)
         switch (event.key.keysym.sym)
         {
         case SDLK_w:
-            lock_phi += 0.1;
-            break;
-        case SDLK_s:
             lock_phi -= 0.1;
             break;
+        case SDLK_s:
+            lock_phi += 0.1;
+            break;
         case SDLK_a:
-            lock_theta += 0.1;
+            lock_theta -= 0.1;
             break;
         case SDLK_d:
-            lock_theta -= 0.1;
+            lock_theta += 0.1;
             break;
         case SDLK_l:
             lock_state++;
@@ -88,5 +89,9 @@ void Camera::handle_event(const SDL_Event event)
         default:
             break;
         }
+        if (lock_phi < -3.14f / 2.0f)
+            lock_phi = -3.14f / 2.0f;
+        if (lock_phi > 3.14f / 2.0f)
+            lock_phi = 3.14f / 2.0f;
     }
 }
