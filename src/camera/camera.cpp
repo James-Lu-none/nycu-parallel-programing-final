@@ -3,6 +3,10 @@
 
 void Camera::update_view(vector<Planet>& bodies)
 {
+    if (lock_state > bodies.size())
+    {
+        lock_state = 0;
+    }
     if (lock_state == 0)
     {
         lock_pos = get_center_of_mass(bodies);
@@ -81,9 +85,6 @@ void Camera::handle_event(const SDL_Event event)
             break;
         case SDLK_l:
             lock_state++;
-            if (lock_state > NUM_BODIES)
-                lock_state = 0;
-            printf("Camera lock: %d\n", lock_state);
             break;
         default:
             break;
