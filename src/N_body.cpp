@@ -16,9 +16,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    SDL_Window *win = SDL_CreateWindow("Three-Body Problem",
+    SDL_Window *win = SDL_CreateWindow(
+        "N-Body Problem",
                                        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                       WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+                                       WIDTH, HEIGHT, SDL_WINDOW_SHOWN
+);
     SDL_Surface *win_surf = SDL_GetWindowSurface(win);
     if (!win) {
         fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError());
