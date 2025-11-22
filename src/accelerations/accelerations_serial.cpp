@@ -3,15 +3,16 @@
 
 #include "config.hpp"
 
-void accelerations(Planet b[])
+void accelerations(vector<Planet> &b)
 {
+    int n = b.size();
     ZoneScopedN("accelerations");
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
         b[i].acc = vec3(0.0, 0.0, 0.0);
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
     {
-        for (int j = i + 1; j < NUM_BODIES; ++j)
+        for (int j = i + 1; j < n; ++j)
         {
             vec3 dpos = b[j].pos - b[i].pos;
             float dist2 = dpos.length_squared() + EPSILON;

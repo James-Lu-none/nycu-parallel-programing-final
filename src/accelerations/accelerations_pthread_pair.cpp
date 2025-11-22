@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    const Planet *b;
+    vector<Planet>& b;
     int t_id;
     int t_N;
     vec3 *t_acc;
@@ -14,21 +14,22 @@ typedef struct
 static void *accelerations_thread(void *arg)
 {
     AccelerationArgs *A = (AccelerationArgs *)arg;
-    const Planet *b = A->b;
+    int n = A->b.size();
+    vector<Planet>& b = A->b;
     int t_id = A->t_id;
     int t_N = A->t_N;
 
     vec3 *acc = A->t_acc;
 
-    // add t_N-1 to NUM_BODIES before divide by t_N to ensure all acceleration pairs (i,j) are covered
-    int chunk = (NUM_BODIES + t_N - 1) / t_N;
+    // add t_N-1 to n before divide by t_N to ensure all acceleration pairs (i,j) are covered
+    int chunk = (n + t_N - 1) / t_N;
     int i_start = t_id * chunk;
-    int i_end = (i_start + chunk < NUM_BODIES) ? (i_start + chunk) : NUM_BODIES;
+    int i_end = (i_start + chunk < n) ? (i_start + chunk) : n;
     int count = 0;
 
     for (int i = i_start; i < i_end; ++i)
     {
-        for (int j = i + 1; j < NUM_BODIES; ++j)
+        for (int j = i + 1; j < n; ++j)
         {
             vec3 dpos = b[j].pos - b[i].pos;
             float dist2 = dpos.length_squared() + EPSILON;
@@ -46,11 +47,11 @@ static void *accelerations_thread(void *arg)
     return NULL;
 }
 
-void accelerations(Planet b[])
+void accelerations(vector<Planet> &b)
 {
     ZoneScopedN("accelerations_parallel");
-
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    int n = b.size();
+    int t_N = NUM_THREADS > n ? n : NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
     AccelerationArgs *args = (AccelerationArgs *)malloc(sizeof(AccelerationArgs) * t_N);
@@ -58,10 +59,10 @@ void accelerations(Planet b[])
     vec3 **t_acc = new vec3*[t_N];
     for (int t = 0; t < t_N; ++t)
     {
-        t_acc[t] = new vec3[NUM_BODIES]();
+        t_acc[t] = new vec3[n]();
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
         b[i].acc = vec3(0.0, 0.0, 0.0);
 
     for (int t = 0; t < t_N; ++t)
@@ -80,7 +81,7 @@ void accelerations(Planet b[])
 
     for (int t = 0; t < t_N; ++t)
     {
-        for (int i = 0; i < NUM_BODIES; ++i)
+        for (int i = 0; i < n; ++i)
         {
             b[i].acc += t_acc[t][i];
         }

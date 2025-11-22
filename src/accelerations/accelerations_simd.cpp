@@ -5,12 +5,13 @@
 #include <immintrin.h>  // AVX
 #include <cstddef>      // offsetof
 
-void accelerations(Planet b[])
+void accelerations(vector<Planet>& b)
 {
     ZoneScopedN("accelerations_f32");
+    int n = b.size();
 
     // 1. clear acc
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
         b[i].acc = vec3(0.f, 0.f, 0.f);
 
     // stride of Planet in float count
@@ -25,7 +26,7 @@ void accelerations(Planet b[])
     const __m256 eps_v = _mm256_set1_ps((float)EPSILON);
     const __m256 one_v = _mm256_set1_ps(1.0f);
 
-    for (int i = 0; i < NUM_BODIES; i++)
+    for (int i = 0; i < n; i++)
     {
         vec3 acc_i(0.f, 0.f, 0.f);
 
@@ -39,7 +40,7 @@ void accelerations(Planet b[])
 
         int j = i + 1;
 
-        int vec_end = i + 1 + ((NUM_BODIES - (i + 1)) / 8) * 8;
+        int vec_end = i + 1 + ((n - (i + 1)) / 8) * 8;
 
         for (; j < vec_end; j += 8)
         {
@@ -103,7 +104,7 @@ void accelerations(Planet b[])
         }
 
         // scalar tail
-        for (; j < NUM_BODIES; j++)
+        for (; j < n; j++)
         {
             vec3 dpos = b[j].pos - b[i].pos;
             float dist2 = dpos.length_squared() + EPSILON;

@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    const Planet *b;
+    vector<Planet>& b;
     int t_id;
     int t_N;
     vec3 *t_acc;
@@ -53,20 +53,21 @@ static void *accelerations_thread(void *arg)
         worker->done = false;
         pthread_mutex_unlock(&worker->mutex);
 
-        const Planet *b = A->b;
+        vector<Planet>& b = A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
         vec3 *acc = A->t_acc;
 
-        int chunk = (NUM_BODIES + t_N - 1) / t_N;
+        int n = b.size();
+        int chunk = (n + t_N - 1) / t_N;
         int i_start = t_id * chunk;
-        int i_end = (i_start + chunk < NUM_BODIES) ? (i_start + chunk) : NUM_BODIES;
+        int i_end = (i_start + chunk < n) ? (i_start + chunk) : n;
 
         {
             ZoneScopedN("compute_accelerations");
             for (int i = i_start; i < i_end; ++i)
             {
-                for (int j = 0; j < NUM_BODIES; ++j)
+                for (int j = 0; j < n; ++j)
                 {
                     vec3 dpos = b[j].pos - b[i].pos;
                     float dist2 = dpos.length_squared() + EPSILON;
@@ -126,20 +127,21 @@ void destroy_workers(void)
     workers = NULL;
 }
 
-void accelerations(Planet b[])
+void accelerations(vector<Planet> &b)
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    int n = b.size();
+    int t_N = NUM_THREADS > n ? n : NUM_THREADS;
 
     vec3 **t_acc = new vec3*[t_N];
     for (int t = 0; t < t_N; ++t)
     {
-        t_acc[t] = new vec3[NUM_BODIES]();
+        t_acc[t] = new vec3[n]();
 
         workers[t].args.b = b;
         workers[t].args.t_acc = t_acc[t];
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
         b[i].acc = vec3(0.0, 0.0, 0.0);
 
     // Wake up all workers
@@ -173,7 +175,7 @@ void accelerations(Planet b[])
         ZoneScopedN("merge_results");
         for (int t = 0; t < t_N; ++t)
         {
-            for (int i = 0; i < NUM_BODIES; ++i)
+            for (int i = 0; i < n; ++i)
             {
                 b[i].acc += t_acc[t][i];
             }
