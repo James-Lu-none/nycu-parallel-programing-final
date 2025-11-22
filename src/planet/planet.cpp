@@ -131,15 +131,17 @@ void load_planets_from_file(const char *filename, vector<Planet>& b)
 
 
 
-vec3 get_center_of_mass(vector<Planet>& b)
+vec3 get_center_of_mass(PlanetsSoA& b)
 {
     ZoneScopedN("recenter");
     vec3 com_pos(0.0, 0.0, 0.0);
     float total_mass = 0.0;
-    for (int i = 0; i < b.size(); ++i)
+    int n = b.count;
+    for (int i = 0; i < n; ++i)
     {
-        com_pos += b[i].mass * b[i].pos;
-        total_mass += b[i].mass;
+        vec3 pos(b.x[i], b.y[i], b.z[i]);
+        com_pos += b.mass[i] * pos;
+        total_mass += b.mass[i];
     }
     com_pos = com_pos / total_mass;
     return com_pos;

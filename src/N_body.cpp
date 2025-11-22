@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     int frame_count = 0;
     
     #ifdef INIT_REQUIRED
-        init_workers(bodies);
+        init_workers(bodies_soa);
     #endif
     while (running)
     {
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
                 if (ev.type == SDL_QUIT)
                     running = false;
             }
-            camera.update_view(bodies);
+            camera.update_view(bodies_soa);
         }
         
         Uint32 now = SDL_GetTicks();
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
         {
             ZoneScopedN("PhysicsStep");
             while (accumulator >= FIXED_DT) {
-                integrator(bodies, FIXED_DT);
+                integrator(bodies_soa, FIXED_DT);
                 accumulator -= FIXED_DT;
             }
         }
@@ -99,9 +99,9 @@ int main(int argc, char* argv[])
             ZoneScopedN("RenderStep");
             SDL_LockSurface(surf);
             render(
-                surf->pixels,
+                (uint32_t*)surf->pixels,
                 camera,
-                bodies,
+                bodies_soa,
                 nullptr
             );
             SDL_UnlockSurface(surf);
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
         SDL_Delay(16);
     }
     #ifdef INIT_REQUIRED
-        destroy_workers(bodies);
+        destroy_workers(bodies_soa);
     #endif
     SDL_DestroyWindow(win);
     SDL_Quit();

@@ -1,74 +1,91 @@
 #include "accelerations.hpp"
 #include "planet.hpp"
-
 #include "config.hpp"
 
 typedef struct
 {
-    const vector<Planet>* b;
+    PlanetsSoA* b;
     int t_id;
     int t_N;
-    vec3 *t_acc;
+    float *t_ax;
+    float *t_ay;
+    float *t_az;
 } AccelerationArgs;
 
-static void *accelerations_thread(void *arg)
+void *accelerations_thread(void *arg)
 {
     AccelerationArgs *A = (AccelerationArgs *)arg;
-    const vector<Planet>& b = *A->b;
-    int n = b.size();
+    PlanetsSoA& b = *A->b;
     int t_id = A->t_id;
     int t_N = A->t_N;
+    float *ax = A->t_ax;
+    float *ay = A->t_ay;
+    float *az = A->t_az;
 
-    vec3 *acc = A->t_acc;
+    int n = b.count;
 
-    int count = 0;
-
-    for (int i = t_id; i < n; i+=t_N)
+    for (int i = t_id; i < n; i += t_N)
     {
-        for (int j = i + 1; j < n; ++j)
+        for (int j = 0; j < n; ++j)
         {
-            vec3 dpos = b[j].pos - b[i].pos;
-            float dist2 = dpos.length_squared() + EPSILON;
+            if (i == j) continue; // A body does not exert force on itself
+
+            float dx = b.x[j] - b.x[i];
+            float dy = b.y[j] - b.y[i];
+            float dz = b.z[j] - b.z[i];
+            float dist2 = dx*dx + dy*dy + dz*dz + EPSILON;
             float dist = sqrt(dist2);
 
-            float F = (G * b[i].mass * b[j].mass) / dist2;
-            vec3 force = F * dpos / dist;
+            float F = (G * b.mass[i] * b.mass[j]) / dist2;
+            float fx = F * dx / dist;
+            float fy = F * dy / dist;
+            float fz = F * dz / dist;
 
-            acc[i] += force / b[i].mass;
-            acc[j] -= force / b[j].mass;
-            count++;
+            ax[i] += fx / b.mass[i];
+            ay[i] += fy / b.mass[i];
+            az[i] += fz / b.mass[i];
         }
     }
-    // printf("Thread %d: calc_count=%d\n", t_id, count);
     return NULL;
 }
 
-void accelerations(vector<Planet> &b)
-{
-    ZoneScopedN("accelerations_parallel");
+void init_workers(PlanetsSoA &b) {}
+void destroy_workers(PlanetsSoA &b) {}
 
-    int n = b.size();
+void accelerations(PlanetsSoA &b)
+{
+    ZoneScopedN("accelerations");
+    int n = b.count;
     int t_N = NUM_THREADS > n ? n : NUM_THREADS;
 
-    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
-    AccelerationArgs *args = (AccelerationArgs *)malloc(sizeof(AccelerationArgs) * t_N);
-
-    vec3 **t_acc = new vec3*[t_N];
-    for (int t = 0; t < t_N; ++t)
-    {
-        t_acc[t] = new vec3[n]();
-    }
-
-    for (int i = 0; i < n; ++i)
-        b[i].acc = vec3(0.0, 0.0, 0.0);
+    pthread_t *threads = new pthread_t[t_N];
+    AccelerationArgs *args = new AccelerationArgs[t_N];
+    
+    float **t_ax = new float*[t_N];
+    float **t_ay = new float*[t_N];
+    float **t_az = new float*[t_N];
 
     for (int t = 0; t < t_N; ++t)
     {
+        t_ax[t] = new float[n]();
+        t_ay[t] = new float[n]();
+        t_az[t] = new float[n]();
+
         args[t].b = &b;
         args[t].t_id = t;
         args[t].t_N = t_N;
-        args[t].t_acc = t_acc[t];
+        args[t].t_ax = t_ax[t];
+        args[t].t_ay = t_ay[t];
+        args[t].t_az = t_az[t];
+
         pthread_create(&threads[t], NULL, accelerations_thread, &args[t]);
+    }
+
+    for (int i = 0; i < n; ++i)
+    {
+        b.ax[i] = 0.0f;
+        b.ay[i] = 0.0f;
+        b.az[i] = 0.0f;
     }
 
     for (int t = 0; t < t_N; ++t)
@@ -80,15 +97,18 @@ void accelerations(vector<Planet> &b)
     {
         for (int i = 0; i < n; ++i)
         {
-            b[i].acc += t_acc[t][i];
+            b.ax[i] += t_ax[t][i];
+            b.ay[i] += t_ay[t][i];
+            b.az[i] += t_az[t][i];
         }
+        delete[] t_ax[t];
+        delete[] t_ay[t];
+        delete[] t_az[t];
     }
 
-    for (int t = 0; t < t_N; ++t)
-    {
-        delete[] t_acc[t];
-    }
-    delete[] t_acc;
-    free(threads);
-    free(args);
+    delete[] t_ax;
+    delete[] t_ay;
+    delete[] t_az;
+    delete[] threads;
+    delete[] args;
 }
