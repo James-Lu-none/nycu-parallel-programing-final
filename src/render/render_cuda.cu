@@ -106,7 +106,7 @@ static color* d_render_buf = nullptr;
 void render(
     void *buf,
     const Camera &camera,
-    const Planet* bodies,
+    const vector<Planet>& bodies,
     const Trail* trails
 )
 {
@@ -118,8 +118,12 @@ void render(
     }
 
     // Copy data to device
-    cudaMemcpy(d_render_bodies, bodies, NUM_BODIES * sizeof(Planet), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_render_trails, trails, NUM_BODIES * sizeof(Trail), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_render_bodies, bodies.data(), NUM_BODIES * sizeof(Planet), cudaMemcpyHostToDevice);
+    if (trails != nullptr) {
+        cudaMemcpy(d_render_trails, trails, NUM_BODIES * sizeof(Trail), cudaMemcpyHostToDevice);
+    } else {
+        cudaMemset(d_render_trails, 0, NUM_BODIES * sizeof(Trail));
+    }
 
     // Launch kernel
     dim3 blockSize(16, 16);

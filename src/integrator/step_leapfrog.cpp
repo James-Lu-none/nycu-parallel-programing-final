@@ -12,6 +12,7 @@ void integrator(vector<Planet>& b, float dt)
     accelerations_integrate(b.data(), b.size(), dt);
 #else
     static const int n = b.size();
+    static int first = 1;
 
     if (first)
     {
