@@ -87,6 +87,12 @@ int main(int argc, char* argv[])
                 accumulator -= FIXED_DT;
             }
         }
+
+        // {
+        //     ZoneScopedN("TrailUpdate");
+        //     for (int i = 0; i < NUM_BODIES; ++i)
+        //         trail_push(&trails[i], bodies[i].pos);
+        // }
         
         {
             ZoneScopedN("RenderStep");
