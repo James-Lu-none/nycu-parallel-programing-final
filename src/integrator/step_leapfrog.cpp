@@ -2,10 +2,16 @@
 #include "accelerations.hpp"
 #include "planet.hpp"
 
+#ifdef USE_CUDA
+void accelerations_integrate(Planet b[], int n, float dt);
+#endif
+
 void integrator(vector<Planet>& b, float dt)
 {
+#ifdef USE_CUDA
+    accelerations_integrate(b.data(), b.size(), dt);
+#else
     static const int n = b.size();
-    static int first = 1;
 
     if (first)
     {
@@ -27,4 +33,5 @@ void integrator(vector<Planet>& b, float dt)
         ZoneScopedN("step_leapfrog");
         b[i].vel += 0.5 * b[i].acc * dt;
     }
+#endif
 }
