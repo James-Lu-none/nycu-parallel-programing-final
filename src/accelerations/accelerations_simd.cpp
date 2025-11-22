@@ -38,13 +38,13 @@ void accelerations(PlanetsSoA &b)
         __m256 azi = _mm256_setzero_ps();
 
         int j = i + 1;
-        for (; j < n - (n % 8); j += 8)
+        for (; j <= n - 8; j += 8)
         {
             // Load body j properties directly from SoA
-            __m256 xj = _mm256_load_ps(&b.x[j]);
-            __m256 yj = _mm256_load_ps(&b.y[j]);
-            __m256 zj = _mm256_load_ps(&b.z[j]);
-            __m256 mj = _mm256_load_ps(&b.mass[j]);
+            __m256 xj = _mm256_loadu_ps(&b.x[j]);
+            __m256 yj = _mm256_loadu_ps(&b.y[j]);
+            __m256 zj = _mm256_loadu_ps(&b.z[j]);
+            __m256 mj = _mm256_loadu_ps(&b.mass[j]);
 
             // Calculate distance vector
             __m256 dx = _mm256_sub_ps(xj, xi);
@@ -84,9 +84,9 @@ void accelerations(PlanetsSoA &b)
 
             // Update body j acceleration
             // Load current acceleration
-            __m256 axj = _mm256_load_ps(&b.ax[j]);
-            __m256 ayj = _mm256_load_ps(&b.ay[j]);
-            __m256 azj = _mm256_load_ps(&b.az[j]);
+            __m256 axj = _mm256_loadu_ps(&b.ax[j]);
+            __m256 ayj = _mm256_loadu_ps(&b.ay[j]);
+            __m256 azj = _mm256_loadu_ps(&b.az[j]);
 
             // Subtract force/mass for j
             axj = _mm256_sub_ps(axj, _mm256_mul_ps(factor_j, dx));
@@ -94,9 +94,9 @@ void accelerations(PlanetsSoA &b)
             azj = _mm256_sub_ps(azj, _mm256_mul_ps(factor_j, dz));
 
             // Store back
-            _mm256_store_ps(&b.ax[j], axj);
-            _mm256_store_ps(&b.ay[j], ayj);
-            _mm256_store_ps(&b.az[j], azj);
+            _mm256_storeu_ps(&b.ax[j], axj);
+            _mm256_storeu_ps(&b.ay[j], ayj);
+            _mm256_storeu_ps(&b.az[j], azj);
         }
 
         // Horizontal sum for body i
