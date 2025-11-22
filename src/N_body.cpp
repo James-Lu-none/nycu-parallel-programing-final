@@ -40,8 +40,10 @@ int main(int argc, char* argv[])
     }
 
     vector<Planet> bodies;
+    PlanetsSoA bodies_soa;
     load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
-
+    load_planets_to_SoA(bodies, bodies_soa);
+    
     Camera camera = Camera();
 
     bool running = true;

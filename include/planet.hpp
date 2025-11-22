@@ -48,7 +48,8 @@ typedef struct
 } Trail;
 
 void load_planets_from_file(const char *filename, vector<Planet>& b);
-vec3 get_center_of_mass(vector<Planet>& b);
+void load_planets_to_soa(vector<Planet> &bodies, PlanetsSoA &bodies_soa);
+vec3 get_center_of_mass(vector<Planet> &b);
 void trail_push(Trail *t, vec3 pos);
 
 #endif
