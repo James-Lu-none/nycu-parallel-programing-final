@@ -2,8 +2,9 @@
 #include "accelerations.hpp"
 #include "planet.hpp"
 
-void integrator(Planet b[], float dt)
+void integrator(vector<Planet>& b, float dt)
 {
+    static const int n = b.size();
     static int first = 1;
 
     if (first)
@@ -13,7 +14,7 @@ void integrator(Planet b[], float dt)
         first = 0;
     }
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
     {
         b[i].vel += 0.5 * b[i].acc * dt;
         b[i].pos += b[i].vel * dt;
@@ -21,7 +22,7 @@ void integrator(Planet b[], float dt)
 
     accelerations(b);
 
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < n; ++i)
     {
         ZoneScopedN("step_leapfrog");
         b[i].vel += 0.5 * b[i].acc * dt;

@@ -47,7 +47,7 @@ void *render_thread(void *args_void){
 void render(
     void *buf,
     const Camera &camera,
-    const Planet* bodies,
+    const vector<Planet> * bodies,
     const Trail* trails
 )
 {

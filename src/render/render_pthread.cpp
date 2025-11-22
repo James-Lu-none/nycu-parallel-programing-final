@@ -57,12 +57,13 @@ void render(
     void *buf,
     const Camera &camera,
     const Planet* bodies,
+    const int num_bodies,
     const Trail* trails
 )
 {
     ZoneScopedN("render_pthread");
-    
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+
+    int t_N = NUM_THREADS > num_bodies ? num_bodies : NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
     RenderTaskArgs *args = (RenderTaskArgs *)malloc(sizeof(RenderTaskArgs) * t_N);

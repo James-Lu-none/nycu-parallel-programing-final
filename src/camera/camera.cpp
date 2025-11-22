@@ -1,7 +1,7 @@
 #include "camera.hpp"
 #include "config.hpp"
 
-void Camera::update_view(Planet *bodies)
+void Camera::update_view(vector<Planet>& bodies)
 {
     if (lock_state == 0)
     {
