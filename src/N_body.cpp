@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     int frame_count = 0;
     
     #ifdef INIT_REQUIRED
-        init_workers();
+        init_workers(bodies);
     #endif
     while (running)
     {
@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
         SDL_Delay(16);
     }
     #ifdef INIT_REQUIRED
-        destroy_workers();
+        destroy_workers(bodies);
     #endif
     SDL_DestroyWindow(win);
     SDL_Quit();
