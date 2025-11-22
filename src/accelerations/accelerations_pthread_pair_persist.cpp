@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    vector<Planet>& b;
+    const vector<Planet>* b;
     int t_id;
     int t_N;
     vec3 *t_acc;
@@ -53,7 +53,7 @@ static void *accelerations_thread(void *arg)
         worker->done = false;
         pthread_mutex_unlock(&worker->mutex);
 
-        vector<Planet>& b = A->b;
+        const vector<Planet>& b = *A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
         vec3 *acc = A->t_acc;
@@ -137,7 +137,7 @@ void accelerations(vector<Planet> &b)
     {
         t_acc[t] = new vec3[n]();
 
-        workers[t].args.b = b;
+        workers[t].args.b = &b;
         workers[t].args.t_acc = t_acc[t];
     }
 

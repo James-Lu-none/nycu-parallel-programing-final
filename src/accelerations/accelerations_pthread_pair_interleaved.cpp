@@ -5,7 +5,7 @@
 
 typedef struct
 {
-    vector<Planet> & b;
+    const vector<Planet>* b;
     int t_id;
     int t_N;
     vec3 *t_acc;
@@ -14,8 +14,8 @@ typedef struct
 static void *accelerations_thread(void *arg)
 {
     AccelerationArgs *A = (AccelerationArgs *)arg;
-    int n = A->b.size();
-    vector<Planet> &b = A->b;
+    const vector<Planet>& b = *A->b;
+    int n = b.size();
     int t_id = A->t_id;
     int t_N = A->t_N;
 
@@ -64,7 +64,7 @@ void accelerations(vector<Planet> &b)
 
     for (int t = 0; t < t_N; ++t)
     {
-        args[t].b = b;
+        args[t].b = &b;
         args[t].t_id = t;
         args[t].t_N = t_N;
         args[t].t_acc = t_acc[t];
