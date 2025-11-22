@@ -39,7 +39,7 @@ static void *accelerations_thread(void *arg)
             count++;
         }
     }
-    printf("Thread %d: calc_count=%d\n", t_id, count);
+    // printf("Thread %d: calc_count=%d\n", t_id, count);
     return NULL;
 }
 

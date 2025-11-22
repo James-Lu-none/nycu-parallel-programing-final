@@ -41,7 +41,7 @@ static void *accelerations_thread(void *arg)
             count++;
         }
     }
-    printf("Thread %d: i_start=%d, i_end=%d, calc_count=%d\n", t_id, i_start, i_end, count);
+    // printf("Thread %d: i_start=%d, i_end=%d, calc_count=%d\n", t_id, i_start, i_end, count);
     return NULL;
 }
 
@@ -92,10 +92,10 @@ void accelerations(vector<Planet> &b)
     }
     delete[] t_acc;
 
-    for (int i = 0; i < n; ++i)
-    {
-        printf("[debug] Body %d Acceleration: %f %f %f\n", i, b[i].acc.x(), b[i].acc.y(), b[i].acc.z());
-    }
+    // for (int i = 0; i < n; ++i)
+    // {
+    //     printf("[debug] Body %d Acceleration: %f %f %f\n", i, b[i].acc.x(), b[i].acc.y(), b[i].acc.z());
+    // }
     free(threads);
     free(args);
 }
