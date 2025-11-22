@@ -44,7 +44,6 @@ void load_planets_from_file(const char *filename, vector<Planet>& b)
 
         while (true)
         {
-            b.push_back(Planet{});
             float x, y, z;
             float vx, vy, vz;
             float ax, ay, az;
@@ -61,7 +60,7 @@ void load_planets_from_file(const char *filename, vector<Planet>& b)
                            &col_r, &col_g, &col_b, &col_a);
 
             if (n == EOF || n == 0)
-                break; // clean EOF
+                break;
 
             if (n != 15)
             {
@@ -70,13 +69,15 @@ void load_planets_from_file(const char *filename, vector<Planet>& b)
                 exit(EXIT_FAILURE);
             }
 
+            b.push_back(Planet{}); // Only push if we have valid data
+
             // Fill planet
             b[i].pos = point3(x, y, z);
             b[i].vel = vec3(vx, vy, vz);
             b[i].acc = vec3(ax, ay, az);
 
             b[i].mass = mass;
-            b[i].r = radius; // <-- directly from file
+            b[i].r = radius;
 
             b[i].col = color{
                 (uint8_t)col_r,
@@ -86,7 +87,7 @@ void load_planets_from_file(const char *filename, vector<Planet>& b)
 
             i++;
         }
-
+        printf("Loaded %d bodies from file.\n", (int)b.size());
         fclose(fp);
     }
 }
