@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(N_body LANGUAGES CXX)
+project(N_body LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

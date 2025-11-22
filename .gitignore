@@ -2,3 +2,4 @@ N_body
 gmon.out
 build
 build_soa
+build_cuda

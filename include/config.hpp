@@ -7,7 +7,9 @@
 #include <ctime>
 #include <cstdlib>
 #include <vector>
+#ifndef __CUDACC__
 #include "tracy/Tracy.hpp"
+#endif
 
 using namespace std;
 
