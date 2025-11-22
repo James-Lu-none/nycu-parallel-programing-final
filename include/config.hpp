@@ -6,7 +6,10 @@
 #include <pthread.h>
 #include <ctime>
 #include <cstdlib>
+#include <vector>
 #include "tracy/Tracy.hpp"
+
+using namespace std;
 
 #define WIDTH 1200
 #define HEIGHT 800

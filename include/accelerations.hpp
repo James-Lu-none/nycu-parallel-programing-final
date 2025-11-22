@@ -2,6 +2,6 @@
 #include "planet.hpp"
 #include "config.hpp"
 
-void accelerations(Planet b[]);
+void accelerations(vector<Planet>& b);
 void init_workers(void);
 void destroy_workers(void);
