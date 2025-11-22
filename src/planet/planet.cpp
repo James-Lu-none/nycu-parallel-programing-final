@@ -12,7 +12,7 @@ vec3 random_vec3(float min, float max)
         min + (rand() / div),
         min + (rand() / div));
 }
-void load_planets_to_soa(vector<Planet>& bodies, PlanetsSoA& bodies_soa)
+void load_planets_to_SoA(vector<Planet> &bodies, PlanetsSoA &bodies_soa)
 {
     bodies_soa.count = bodies.size();
     bodies_soa.x = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
