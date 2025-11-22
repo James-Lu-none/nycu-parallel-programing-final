@@ -21,6 +21,7 @@ typedef struct
     int size;
 } Trail;
 
+uint64_t load_planets_from_file(const char *filename, Planet *b);
 vec3 get_center_of_mass(Planet b[]);
 void trail_push(Trail *t, vec3 pos);
 

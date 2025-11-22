@@ -10,22 +10,9 @@ using namespace std;
 
 canvas canvas_buf;
 
-vec3 random_vec3(float min, float max)
-{
-    ZoneScopedN("random_float");
-    float range = (max - min);
-    float div = RAND_MAX / range;
-    return vec3(
-        min + (rand() / div),
-        min + (rand() / div),
-        min + (rand() / div)
-    );
-}
-
-int main(void)
+int main(int argc, char* argv[])
 {
     tracy::SetThreadName("main_thread");
-    srand(time(NULL));
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return 1;
@@ -52,31 +39,13 @@ int main(void)
         return 1;
     }
 
-    const unsigned long colors[] = {0x00ff0000, 0x0000ff00, 0x000000ff, 0x00ffff00, 0x00ff00ff, 0x0000ffff};
-    Planet bodies[NUM_BODIES];
-    const float S  = 140.0;
-    const float VS = 140.0;
-    const float m  = 200.0;
+    Planet* bodies;
+    uint64_t num_bodies = load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
+    printf("Loaded %llu bodies from file.\n", (unsigned long long)num_bodies);
 
     Camera camera = Camera();
 
-    for (int i = 0; i < NUM_BODIES; ++i){
-        bodies[i] = (Planet){
-            random_vec3(-1.0, 1.0) * S,
-            random_vec3(-1.0, 1.0) * VS,
-            vec3(0.0, 0.0, 0.0),
-            m, 15,
-            {
-                (uint8_t)((colors[i % 6] >> 16) & 0xFF),
-                (uint8_t)((colors[i % 6] >> 8) & 0xFF),
-                (uint8_t)(colors[i % 6] & 0xFF),
-                255
-            }};
-    }
-
-    Trail trails[NUM_BODIES] = {};
-
-    int running = 1;
+    bool running = true;
     SDL_Event ev;
     const float FIXED_DT = 0.0002;
     float accumulator = 0.0;
