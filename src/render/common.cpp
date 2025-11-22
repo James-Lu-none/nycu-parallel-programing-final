@@ -3,22 +3,22 @@
 #include "vec3.hpp"
 #include "ray.hpp"
 
-float hit_trail(const Trail &t, const ray &r)
-{
-    int radius_squared = 4; // radius 2
-    for (int i = 0; i < t.size; ++i)
-    {
-        vec3 oc = t.pos[i] - r.origin();
-        float a = dot(r.direction(), r.direction());
-        float b = -2.0 * dot(r.direction(), oc);
-        float c = dot(oc, oc) - radius_squared;
-        float discriminant = b * b - 4 * a * c;
-        if (discriminant >= 0) {
-            return true;
-        }
-    }
-    return false;
-}
+// float hit_trail(const Trail &t, const ray &r)
+// {
+//     int radius_squared = 4; // radius 2
+//     for (int i = 0; i < t.size; ++i)
+//     {
+//         vec3 oc = t.pos[i] - r.origin();
+//         float a = dot(r.direction(), r.direction());
+//         float b = -2.0 * dot(r.direction(), oc);
+//         float c = dot(oc, oc) - radius_squared;
+//         float discriminant = b * b - 4 * a * c;
+//         if (discriminant >= 0) {
+//             return true;
+//         }
+//     }
+//     return false;
+// }
 
 float hit_planet(const Planet &p, const ray &r)
 {
@@ -79,7 +79,7 @@ color get_ray_color_simd(const ray &r, const Planet* bodies, const Trail* trails
 
     // AVX 常數
     __m256 a_v    = _mm256_set1_ps(a_scalar);
-    __m256 two_v  = _mm256_set1_ps(2.0f);
+    __m256 zero_v  = _mm256_set1_ps(0.0f);
     __m256 four_v = _mm256_set1_ps(4.0f);
     __m256 Ox_v   = _mm256_set1_ps(Ox);
     __m256 Oy_v   = _mm256_set1_ps(Oy);
@@ -90,13 +90,14 @@ color get_ray_color_simd(const ray &r, const Planet* bodies, const Trail* trails
 
     // === gather 用的 base pointer ===
     int stride_f = sizeof(Planet) / sizeof(float);
+    // printf("%d\n", stride_f);
 
     float* base_pos = (float*)&bodies[0].pos.e[0];
     float* base_r =
         (float*)((char*)&bodies[0] + offsetof(Planet, r));
 
     int i = 0;
-    int vec_end = (NUM_BODIES / 8) * 8;   // AVX: 一次處理 8 顆 planet
+    int vec_end = NUM_BODIES - (NUM_BODIES % 8);
 
     for (; i < vec_end; i += 8)
     {
@@ -168,30 +169,46 @@ color get_ray_color_simd(const ray &r, const Planet* bodies, const Trail* trails
         _mm256_storeu_ps(disc_arr, disc);
         _mm256_storeu_ps(b_arr,    b_v);
 
+        __m256 disc_mask = _mm256_cmp_ps(disc, zero_v, _CMP_GT_OQ);
+
+        __m256 disc_pos = _mm256_max_ps(disc, zero_v);
+        __m256 sqrt_disc = _mm256_sqrt_ps(disc_pos);
+
+        __m256 neg_b = _mm256_sub_ps(_mm256_setzero_ps(), b_v);
+        __m256 denom = _mm256_mul_ps(_mm256_set1_ps(2.0f), a_v);
+
+        __m256 t_vec = _mm256_div_ps(_mm256_sub_ps(neg_b, sqrt_disc), denom);
+
+        __m256 t_mask = _mm256_cmp_ps(t_vec, zero_v, _CMP_GE_OQ);
+
+        __m256 valid_mask = _mm256_and_ps(disc_mask, t_mask);
+
+        __m256 big = _mm256_set1_ps(1e30f);
+
+        t_vec = _mm256_blendv_ps(big, t_vec, valid_mask);
+
+        float t_arr[8];
+        _mm256_storeu_ps(t_arr, t_vec);
+
         for (int k = 0; k < 8; ++k)
         {
             int idx = i + k;
             if (idx >= NUM_BODIES) break;
 
-            if (disc_arr[k] >= 0.0f)
+            float t = t_arr[k];
+
+            // 如果前面用 big 填無效的，這裡可以直接判斷
+            if (t < 1e20f)  // 或者用 valid_mask 的 movemask 也行
             {
-                float t = (-b_arr[k] - std::sqrt(disc_arr[k])) / (2.0f * a_scalar);
-                if (t >= 0.0f)
-                {
-                    vec3 hit_point = r.at(t);
-                    vec3 N = 128.0f * (unit_vector(hit_point - bodies[idx].pos) + vec3(1,1,1));
+                vec3 hit_point = r.at(t);
+                vec3 N = 128.0f * (unit_vector(hit_point - bodies[idx].pos) + vec3(1,1,1));
 
-                    return {
-                        (uint8_t)std::min(N.x(), 255.0f),
-                        (uint8_t)std::min(N.y(), 255.0f),
-                        (uint8_t)std::min(N.z(), 255.0f),
-                        255
-                    };
-                }
-            }
-
-            if (hit_trail(trails[idx], r)) {
-                return bodies[idx].col;
+                return {
+                    (uint8_t)std::min(N.x(), 255.0f),
+                    (uint8_t)std::min(N.y(), 255.0f),
+                    (uint8_t)std::min(N.z(), 255.0f),
+                    255
+                };
             }
         }
     }
@@ -210,8 +227,8 @@ color get_ray_color_simd(const ray &r, const Planet* bodies, const Trail* trails
                 255
             };
         }
-        if (hit_trail(trails[i], r))
-            return bodies[i].col;
+        // if (hit_trail(trails[i], r))
+        //     return bodies[i].col;
     }
 
     return {0,0,0,255};
