@@ -64,11 +64,13 @@ CUDA_DEVICE color get_ray_color_device(const ray &r, const Planet *bodies, const
         if (t >= 0.0f)
         {
             vec3 hit_point = r.at(t);
-            vec3 N = 128.0f * (unit_vector(hit_point - bodies[i].pos) + vec3(1, 1, 1));
+            vec3 N = unit_vector(hit_point - bodies[i].pos);
+            vec3 light_dir = unit_vector(vec3(1, 1, 0.6));
+            float brightness = 0.2f + 0.8f * fmaxf(dot(N, light_dir), 0.0f);
             return {
-                (uint8_t)fminf(N.x(), 255.0f),
-                (uint8_t)fminf(N.y(), 255.0f),
-                (uint8_t)fminf(N.z(), 255.0f),
+                (uint8_t)(bodies[i].col.r * brightness),
+                (uint8_t)(bodies[i].col.g * brightness),
+                (uint8_t)(bodies[i].col.b * brightness),
                 255};
         }
         if (hit_trail_device(trails[i], r))
