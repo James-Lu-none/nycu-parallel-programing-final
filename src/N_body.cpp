@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
             {
                 camera.handle_event(ev);
                 if (ev.type == SDL_QUIT)
-                    running = 0;
+                    running = false;
             }
             camera.update_view(bodies);
         }
@@ -87,12 +87,6 @@ int main(int argc, char* argv[])
                 accumulator -= FIXED_DT;
             }
         }
-
-        {
-            ZoneScopedN("TrailUpdate");
-            for (int i = 0; i < NUM_BODIES; ++i)
-                trail_push(&trails[i], bodies[i].pos);
-        }
         
         {
             ZoneScopedN("RenderStep");
@@ -101,7 +95,7 @@ int main(int argc, char* argv[])
                 surf->pixels,
                 camera,
                 bodies,
-                trails
+                nullptr
             );
             SDL_UnlockSurface(surf);
         }
