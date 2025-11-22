@@ -115,11 +115,11 @@ color background(const ray &r)
     return hit_color;
 }
 
-color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
+color get_ray_color(const ray &r, const vector<Planet>& bodies, const Trail *trails)
 {
     float t = 1e30;
     int idx = -1;
-    for (int i = 0; i < NUM_BODIES; ++i)
+    for (int i = 0; i < bodies.size(); ++i)
     {
         float t_i = hit_planet(bodies[i], r);
         if (t_i >= 0 && t_i < t) {
@@ -145,7 +145,7 @@ color get_ray_color(const ray &r, const Planet *bodies, const Trail *trails)
     return background(r);
 }
 
-color get_ray_color_simd(const ray &r, const Planet *bodies, const Trail *trails)
+color get_ray_color_simd(const ray &r, const vector<Planet>& bodies, const Trail *trails)
 {
     // Ray origin and direction broadcast
     __m256 rx = _mm256_set1_ps(r.origin().x());

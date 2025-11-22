@@ -6,7 +6,7 @@
 typedef struct {
     void* buf;
     const Camera* camera;
-    const Planet* bodies;
+    vector<Planet>& bodies;
     const Trail* trails;
     int start_row;
     int end_row;
@@ -19,7 +19,7 @@ void *render_thread(void *args_void){
     const int end_row = args->end_row;
     color *buf = (color *)malloc(sizeof(color) * WIDTH * (end_row - start_row));
     const Camera *camera = args->camera;
-    const Planet *bodies = args->bodies;
+    const vector<Planet>& bodies = args->bodies;
     const Trail *trails = args->trails;
 
     for (int j = start_row; j < end_row; ++j){
@@ -47,11 +47,11 @@ void *render_thread(void *args_void){
 void render(
     void *buf,
     const Camera &camera,
-    const vector<Planet> * bodies,
+    const vector<Planet>& bodies,
     const Trail* trails
 )
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    int t_N = NUM_THREADS > bodies.size() ? bodies.size() : NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
     RenderTaskArgs *args = (RenderTaskArgs *)malloc(sizeof(RenderTaskArgs) * t_N);
