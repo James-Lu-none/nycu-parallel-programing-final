@@ -92,9 +92,9 @@ static void *accelerations_thread(void *arg)
     return NULL;
 }
 
-void init_workers(void)
+void init_workers(vector<Planet> &b)
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    int t_N = NUM_THREADS > b.size() ? b.size() : NUM_THREADS;
     workers = (Worker *)calloc(t_N, sizeof(Worker));
     for (int i = 0; i < t_N; i++)
     {
@@ -109,9 +109,9 @@ void init_workers(void)
     }
 }
 
-void destroy_workers(void)
+void destroy_workers(vector<Planet> &b)
 {
-    int t_N = NUM_THREADS > NUM_BODIES ? NUM_BODIES : NUM_THREADS;
+    int t_N = NUM_THREADS > b.size() ? b.size() : NUM_THREADS;
     for (int i = 0; i < t_N; i++)
     {
         pthread_mutex_lock(&workers[i].mutex);

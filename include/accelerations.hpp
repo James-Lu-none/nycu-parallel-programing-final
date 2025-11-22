@@ -3,5 +3,5 @@
 #include "config.hpp"
 
 void accelerations(vector<Planet>& b);
-void init_workers(void);
-void destroy_workers(void);
+void init_workers(vector<Planet> &b);
+void destroy_workers(vector<Planet> &b);
