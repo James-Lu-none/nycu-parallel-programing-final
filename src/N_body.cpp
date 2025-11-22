@@ -41,7 +41,6 @@ int main(int argc, char* argv[])
 
     vector<Planet> bodies;
     load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
-    printf("Loaded %d bodies from file.\n", (int)bodies.size());
 
     Camera camera = Camera();
 
