@@ -21,18 +21,22 @@ void integrator(vector<Planet>& b, float dt)
         first = 0;
     }
 
-    for (int i = 0; i < n; ++i)
     {
-        b[i].vel += 0.5 * b[i].acc * dt;
-        b[i].pos += b[i].vel * dt;
+        ZoneScopedN("step_leapfrog 1/2");
+        for (int i = 0; i < n; ++i)
+        {
+            b[i].vel += 0.5 * b[i].acc * dt;
+            b[i].pos += b[i].vel * dt;
+        }
     }
 
     accelerations(b);
-
-    for (int i = 0; i < n; ++i)
     {
-        ZoneScopedN("step_leapfrog");
-        b[i].vel += 0.5 * b[i].acc * dt;
+        ZoneScopedN("step_leapfrog 2/2");
+        for (int i = 0; i < n; ++i)
+        {
+            b[i].vel += 0.5 * b[i].acc * dt;
+        }
     }
 #endif
 }
