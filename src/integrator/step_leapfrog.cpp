@@ -21,20 +21,26 @@ void integrator(PlanetsSoA& b, float dt)
     }
 
     // Drift
-    for (int i = 0; i < n; ++i)
     {
-        b.x[i] += b.vx[i] * dt;
-        b.y[i] += b.vy[i] * dt;
-        b.z[i] += b.vz[i] * dt;
+        ZoneScopedN("step_leapfrog 1/2");
+        for (int i = 0; i < n; ++i)
+        {
+            b.x[i] += b.vx[i] * dt;
+            b.y[i] += b.vy[i] * dt;
+            b.z[i] += b.vz[i] * dt;
+        }
     }
 
     accelerations(b);
 
     // Second half kick
-    for (int i = 0; i < n; ++i)
     {
-        b.vx[i] += 0.5f * b.ax[i] * dt;
-        b.vy[i] += 0.5f * b.ay[i] * dt;
-        b.vz[i] += 0.5f * b.az[i] * dt;
+        ZoneScopedN("step_leapfrog 2/2");
+        for (int i = 0; i < n; ++i)
+        {
+            b.vx[i] += 0.5f * b.ax[i] * dt;
+            b.vy[i] += 0.5f * b.ay[i] * dt;
+            b.vz[i] += 0.5f * b.az[i] * dt;
+        }
     }
 }
