@@ -26,8 +26,4 @@ target_include_directories(accelerations PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(accelerations PUBLIC TracyClient)
-
-if(NOT ACCEL_VARIANT STREQUAL "cuda")
-    target_compile_definitions(accelerations PUBLIC TRACY_ENABLE=1)
-    target_compile_options(accelerations PUBLIC -mavx -mavx2 -mfma)
-endif()
+target_compile_definitions(accelerations PUBLIC TRACY_ENABLE=1)

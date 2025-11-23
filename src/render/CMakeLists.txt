@@ -23,9 +23,4 @@ target_include_directories(render PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(render PUBLIC TracyClient)
-
-if(NOT RENDER_VARIANT STREQUAL "cuda")
-    target_compile_definitions(render PUBLIC TRACY_ENABLE=1)
-    target_compile_options(render PUBLIC -O3 -mavx2 -mfma)
-endif()
-
+target_compile_definitions(render PUBLIC TRACY_ENABLE=1)
