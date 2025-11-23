@@ -22,4 +22,3 @@ target_include_directories(accelerations PUBLIC
 )
 target_link_libraries(accelerations PUBLIC TracyClient)
 target_compile_definitions(accelerations PUBLIC TRACY_ENABLE=1)
-target_compile_options(accelerations PUBLIC -mavx -mavx2 -mfma)
