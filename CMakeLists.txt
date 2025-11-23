@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_CXX_COMPILER "/usr/bin/g++-11")
-set(CMAKE_CUDA_HOST_COMPILER "/usr/bin/g++-11")
+set(CMAKE_CXX_COMPILER "/usr/bin/g++-10")
+set(CMAKE_CUDA_HOST_COMPILER "/usr/bin/g++-10")
 
 project(N_body LANGUAGES CXX CUDA)
 
