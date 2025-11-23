@@ -3,7 +3,10 @@ project(N_body LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
+add_compile_options(-Wall -Wextra -O3 -mavx2 -mfma)
+    
 find_package(SDL2 REQUIRED)
 
 include(FetchContent)
@@ -32,6 +35,13 @@ target_link_libraries(N_body
     m
 )
 
+# add_library(project_common INTERFACE)
+# target_compile_options(project_common INTERFACE
+#     -Wall -O3 -pg -g
+# )
+# target_compile_definitions(project_common INTERFACE TRACY_ENABLE=1)
+# target_link_libraries(project_common INTERFACE TracyClient)
+
 add_subdirectory(src/accelerations)
 add_subdirectory(src/render)
 add_subdirectory(src/integrator)
@@ -39,4 +49,3 @@ add_subdirectory(src/planet)
 add_subdirectory(src/camera)
 
 target_include_directories(N_body PUBLIC ${SDL2_INCLUDE_DIRS})
-target_compile_options(N_body PUBLIC -Wall -O2 -pg -g)
