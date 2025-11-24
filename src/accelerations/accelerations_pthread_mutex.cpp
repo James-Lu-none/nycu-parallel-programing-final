@@ -71,7 +71,7 @@ static void *accelerations_thread(void *arg)
             ZoneScopedN("compute_accelerations");
             for (int i = i_start; i < i_end; ++i)
             {
-                for (int j = 0; j < n; ++j)
+                for (int j = i+1; j < n; ++j)
                 {
                     float dx = b.x[j] - b.x[i];
                     float dy = b.y[j] - b.y[i];
@@ -87,6 +87,9 @@ static void *accelerations_thread(void *arg)
                     ax[i] += fx / b.mass[i];
                     ay[i] += fy / b.mass[i];
                     az[i] += fz / b.mass[i];
+                    ax[j] -= fx / b.mass[j];
+                    ay[j] -= fy / b.mass[j];
+                    az[j] -= fz / b.mass[j];
                 }
             }
         }

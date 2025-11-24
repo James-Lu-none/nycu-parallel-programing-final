@@ -63,13 +63,11 @@ __global__ void accelerations_kernel(
 
         if (i < n) {
             #pragma unroll
-            for (int j = 0; j < BLOCK_SIZE; ++j) {
+            for (int j = i+1; j < BLOCK_SIZE; ++j) {
                 int j_idx = tile * blockDim.x + j;
                 // if (j_idx >= n) break; // Handled by mass=0 check implicitly or explicit check?
                 // Explicit check is safer if n is not multiple of BLOCK_SIZE
                 if (j_idx >= n) break;
-
-                if (i == j_idx) continue;
 
                 float dx = sh_x[j] - my_x;
                 float dy = sh_y[j] - my_y;
