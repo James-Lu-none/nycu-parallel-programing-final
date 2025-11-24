@@ -118,8 +118,6 @@ int main(int argc, char* argv[])
         
         TracyPlot("Frame Time (ms)", frame_dt * 1000.0);
         TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
-        
-        SDL_Delay(16);
     }
     #ifdef INIT_REQUIRED
         destroy_workers(bodies);
