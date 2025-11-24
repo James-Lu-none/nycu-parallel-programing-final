@@ -7,7 +7,9 @@
 #include <ctime>
 #include <cstdlib>
 #include <vector>
+#ifndef __CUDACC__
 #include "tracy/Tracy.hpp"
+#endif
 
 using namespace std;
 
@@ -15,7 +17,7 @@ using namespace std;
 #define HEIGHT 800
 
 // generate NUM_BODIES bodies if no file is provided
-#define NUM_BODIES 50
+#define NUM_BODIES 100
 #define TRAIL_BUF 5
 #define MIN_DIST 1.5
 

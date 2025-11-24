@@ -1,19 +1,20 @@
 #include "camera.hpp"
 #include "config.hpp"
 
-void Camera::update_view(vector<Planet>& bodies)
+void Camera::update_view(const PlanetsSoA& bodies)
 {
-    if (lock_state > bodies.size())
+    if (lock_state > bodies.count)
     {
         lock_state = 0;
     }
     if (lock_state == 0)
     {
-        lock_pos = get_center_of_mass(bodies);
+        lock_pos = get_center_of_mass(const_cast<PlanetsSoA&>(bodies));
     }
     else
     {
-        lock_pos = bodies[lock_state - 1].pos;
+        int idx = lock_state - 1;
+        lock_pos = vec3(bodies.x[idx], bodies.y[idx], bodies.z[idx]);
     }
 
     offset = vec3(

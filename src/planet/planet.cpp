@@ -12,6 +12,43 @@ vec3 random_vec3(float min, float max)
         min + (rand() / div),
         min + (rand() / div));
 }
+void load_planets_to_SoA(vector<Planet> &bodies, PlanetsSoA &bodies_soa)
+{
+    bodies_soa.count = bodies.size();
+    bodies_soa.x = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.y = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.z = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.vx = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.vy = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.vz = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.ax = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.ay = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.az = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.mass = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.r = (float *)aligned_alloc(32, sizeof(float) * bodies.size());
+    bodies_soa.col_r = (uint8_t *)malloc(sizeof(uint8_t) * bodies.size());
+    bodies_soa.col_g = (uint8_t *)malloc(sizeof(uint8_t) * bodies.size());
+    bodies_soa.col_b = (uint8_t *)malloc(sizeof(uint8_t) * bodies.size());
+    bodies_soa.col_a = (uint8_t *)malloc(sizeof(uint8_t) * bodies.size());
+    for (int i = 0; i < bodies.size(); ++i)
+    {
+        bodies_soa.x[i] = bodies[i].pos.x();
+        bodies_soa.y[i] = bodies[i].pos.y();
+        bodies_soa.z[i] = bodies[i].pos.z();
+        bodies_soa.vx[i] = bodies[i].vel.x();
+        bodies_soa.vy[i] = bodies[i].vel.y();
+        bodies_soa.vz[i] = bodies[i].vel.z();
+        bodies_soa.ax[i] = bodies[i].acc.x();
+        bodies_soa.ay[i] = bodies[i].acc.y();
+        bodies_soa.az[i] = bodies[i].acc.z();
+        bodies_soa.mass[i] = bodies[i].mass;
+        bodies_soa.r[i] = bodies[i].r;
+        bodies_soa.col_r[i] = bodies[i].col.r;
+        bodies_soa.col_g[i] = bodies[i].col.g;
+        bodies_soa.col_b[i] = bodies[i].col.b;
+        bodies_soa.col_a[i] = bodies[i].col.a;
+    }
+}
 
 void load_planets_from_file(const char *filename, vector<Planet>& b)
 {
@@ -92,15 +129,19 @@ void load_planets_from_file(const char *filename, vector<Planet>& b)
     }
 }
 
-vec3 get_center_of_mass(vector<Planet>& b)
+
+
+vec3 get_center_of_mass(PlanetsSoA& b)
 {
     ZoneScopedN("recenter");
     vec3 com_pos(0.0, 0.0, 0.0);
     float total_mass = 0.0;
-    for (int i = 0; i < b.size(); ++i)
+    int n = b.count;
+    for (int i = 0; i < n; ++i)
     {
-        com_pos += b[i].mass * b[i].pos;
-        total_mass += b[i].mass;
+        vec3 pos(b.x[i], b.y[i], b.z[i]);
+        com_pos += b.mass[i] * pos;
+        total_mass += b.mass[i];
     }
     com_pos = com_pos / total_mass;
     return com_pos;

@@ -1,122 +1,140 @@
 #include "accelerations.hpp"
 #include "planet.hpp"
-#include "config.hpp"
+#include "config.hpp" // For G and EPSILON
+#include <immintrin.h>
+#include <cmath>      // For std::sqrt
 
-#include <immintrin.h>  // AVX
-#include <cstddef>      // offsetof
+void init_workers(PlanetsSoA &b) {}
+void destroy_workers(PlanetsSoA &b) {}
 
-void accelerations(vector<Planet>& b)
+void accelerations(PlanetsSoA &b)
 {
-    ZoneScopedN("accelerations_f32");
-    int n = b.size();
+    ZoneScopedN("accelerations");
 
-    // 1. clear acc
+    int n = b.count;
+
+    // Reset accelerations
     for (int i = 0; i < n; ++i)
-        b[i].acc = vec3(0.f, 0.f, 0.f);
-
-    // stride of Planet in float count
-    const int stride_f = sizeof(Planet) / sizeof(float);
-
-    float* base_pos  = &b[0].pos.e[0];
-    float* base_mass = reinterpret_cast<float*>(
-        reinterpret_cast<char*>(&b[0]) + offsetof(Planet, mass)
-    );
-
-    const __m256 G_v   = _mm256_set1_ps((float)G);
-    const __m256 eps_v = _mm256_set1_ps((float)EPSILON);
-    const __m256 one_v = _mm256_set1_ps(1.0f);
-
-    for (int i = 0; i < n; i++)
     {
-        vec3 acc_i(0.f, 0.f, 0.f);
+        b.ax[i] = 0.0f;
+        b.ay[i] = 0.0f;
+        b.az[i] = 0.0f;
+    }
 
-        float mi     = b[i].mass;
-        float inv_mi = 1.0f / mi;
+    // Constants
+    __m256 G_vec = _mm256_set1_ps(G);
+    __m256 epsilon = _mm256_set1_ps(EPSILON);
 
-        const __m256 mi_v = _mm256_set1_ps(mi);
-        const __m256 pi_x = _mm256_set1_ps(b[i].pos.x());
-        const __m256 pi_y = _mm256_set1_ps(b[i].pos.y());
-        const __m256 pi_z = _mm256_set1_ps(b[i].pos.z());
+    for (int i = 0; i < n; ++i)
+    {
+        __m256 xi = _mm256_set1_ps(b.x[i]);
+        __m256 yi = _mm256_set1_ps(b.y[i]);
+        __m256 zi = _mm256_set1_ps(b.z[i]);
+        __m256 mi = _mm256_set1_ps(b.mass[i]);
+        
+        // Accumulators for force on body i
+        __m256 axi = _mm256_setzero_ps();
+        __m256 ayi = _mm256_setzero_ps();
+        __m256 azi = _mm256_setzero_ps();
 
         int j = i + 1;
-
-        int vec_end = i + 1 + ((n - (i + 1)) / 8) * 8;
-
-        for (; j < vec_end; j += 8)
+        for (; j <= n - 8; j += 8)
         {
-            __m256i vidx = _mm256_set_epi32(
-                (j+7)*stride_f, (j+6)*stride_f, (j+5)*stride_f, (j+4)*stride_f,
-                (j+3)*stride_f, (j+2)*stride_f, (j+1)*stride_f, (j+0)*stride_f
-            );
+            // Load body j properties directly from SoA
+            __m256 xj = _mm256_loadu_ps(&b.x[j]);
+            __m256 yj = _mm256_loadu_ps(&b.y[j]);
+            __m256 zj = _mm256_loadu_ps(&b.z[j]);
+            __m256 mj = _mm256_loadu_ps(&b.mass[j]);
 
-            // gather positions
-            __m256 pj_x = _mm256_i32gather_ps(base_pos + 0, vidx, 4);
-            __m256 pj_y = _mm256_i32gather_ps(base_pos + 1, vidx, 4);
-            __m256 pj_z = _mm256_i32gather_ps(base_pos + 2, vidx, 4);
+            // Calculate distance vector
+            __m256 dx = _mm256_sub_ps(xj, xi);
+            __m256 dy = _mm256_sub_ps(yj, yi);
+            __m256 dz = _mm256_sub_ps(zj, zi);
 
-            // dpos = pj - pi
-            __m256 dx = _mm256_sub_ps(pj_x, pi_x);
-            __m256 dy = _mm256_sub_ps(pj_y, pi_y);
-            __m256 dz = _mm256_sub_ps(pj_z, pi_z);
-
-            // dist2 = |dpos|^2 + eps
+            // dist^2 = dx^2 + dy^2 + dz^2 + epsilon
             __m256 dist2 = _mm256_add_ps(
-                _mm256_add_ps(_mm256_mul_ps(dx, dx),
-                              _mm256_mul_ps(dy, dy)),
-                _mm256_mul_ps(dz, dz)
+                _mm256_add_ps(_mm256_mul_ps(dx, dx), _mm256_mul_ps(dy, dy)),
+                _mm256_add_ps(_mm256_mul_ps(dz, dz), epsilon)
             );
-            dist2 = _mm256_add_ps(dist2, eps_v);
 
-            // dist = sqrt(dist2)
-            __m256 dist = _mm256_sqrt_ps(dist2);
-            __m256 inv_dist = _mm256_div_ps(one_v, dist);
+            // inv_dist = 1 / sqrt(dist^2)
+            __m256 inv_dist = _mm256_rsqrt_ps(dist2);
+            
+            // inv_dist3 = inv_dist * inv_dist * inv_dist = 1 / dist^3
+            __m256 inv_dist2 = _mm256_mul_ps(inv_dist, inv_dist);
+            __m256 inv_dist3 = _mm256_mul_ps(inv_dist2, inv_dist);
 
-            // mj
-            __m256 mj = _mm256_i32gather_ps(base_mass, vidx, 4);
+            // F_mag = G * mi * mj * inv_dist3
+            // Force vector F = F_mag * vec(d)
+            // Acceleration a = F / m
+            // ai =  G * mj * inv_dist3 * vec(d)
+            // aj = -G * mi * inv_dist3 * vec(d)
 
-            // F = G * mi * mj / dist2
-            __m256 tmp = _mm256_mul_ps(G_v, mi_v);
-            tmp        = _mm256_mul_ps(tmp, mj);
-            __m256 F   = _mm256_div_ps(tmp, dist2);
+            __m256 factor = _mm256_mul_ps(G_vec, inv_dist3);
+            __m256 factor_i = _mm256_mul_ps(factor, mj);
+            __m256 factor_j = _mm256_mul_ps(factor, mi);
 
-            __m256 scale = _mm256_mul_ps(F, inv_dist);
+            __m256 fx = _mm256_mul_ps(factor_i, dx);
+            __m256 fy = _mm256_mul_ps(factor_i, dy);
+            __m256 fz = _mm256_mul_ps(factor_i, dz);
 
-            __m256 fx = _mm256_mul_ps(dx, scale);
-            __m256 fy = _mm256_mul_ps(dy, scale);
-            __m256 fz = _mm256_mul_ps(dz, scale);
+            axi = _mm256_add_ps(axi, fx);
+            ayi = _mm256_add_ps(ayi, fy);
+            azi = _mm256_add_ps(azi, fz);
 
-            float fx_arr[8], fy_arr[8], fz_arr[8], mj_arr[8];
-            _mm256_storeu_ps(fx_arr, fx);
-            _mm256_storeu_ps(fy_arr, fy);
-            _mm256_storeu_ps(fz_arr, fz);
-            _mm256_storeu_ps(mj_arr, mj);
+            // Update body j acceleration
+            // Load current acceleration
+            __m256 axj = _mm256_loadu_ps(&b.ax[j]);
+            __m256 ayj = _mm256_loadu_ps(&b.ay[j]);
+            __m256 azj = _mm256_loadu_ps(&b.az[j]);
 
-            for (int k = 0; k < 8; k++)
-            {
-                int idx = j + k;
-                vec3 force_k(fx_arr[k], fy_arr[k], fz_arr[k]);
+            // Subtract force/mass for j
+            axj = _mm256_sub_ps(axj, _mm256_mul_ps(factor_j, dx));
+            ayj = _mm256_sub_ps(ayj, _mm256_mul_ps(factor_j, dy));
+            azj = _mm256_sub_ps(azj, _mm256_mul_ps(factor_j, dz));
 
-                float inv_mj = 1.0f / mj_arr[k];
-
-                acc_i += force_k * inv_mi;
-                b[idx].acc -= force_k * inv_mj;
-            }
+            // Store back
+            _mm256_storeu_ps(&b.ax[j], axj);
+            _mm256_storeu_ps(&b.ay[j], ayj);
+            _mm256_storeu_ps(&b.az[j], azj);
         }
 
-        // scalar tail
-        for (; j < n; j++)
+        // Horizontal sum for body i
+        alignas(32) float temp_ax[8];
+        alignas(32) float temp_ay[8];
+        alignas(32) float temp_az[8];
+        _mm256_store_ps(temp_ax, axi);
+        _mm256_store_ps(temp_ay, ayi);
+        _mm256_store_ps(temp_az, azi);
+
+        for (int k = 0; k < 8; ++k)
         {
-            vec3 dpos = b[j].pos - b[i].pos;
-            float dist2 = dpos.length_squared() + EPSILON;
+            b.ax[i] += temp_ax[k];
+            b.ay[i] += temp_ay[k];
+            b.az[i] += temp_az[k];
+        }
+
+        // Handle remaining elements
+        for (; j < n; ++j)
+        {
+            float dx = b.x[j] - b.x[i];
+            float dy = b.y[j] - b.y[i];
+            float dz = b.z[j] - b.z[i];
+            float dist2 = dx*dx + dy*dy + dz*dz + EPSILON;
             float dist  = std::sqrt(dist2);
 
-            float F = (G * b[i].mass * b[j].mass) / dist2;
-            vec3 force = F * dpos / dist;
+            float F = (G * b.mass[i] * b.mass[j]) / dist2;
+            float fx = F * dx / dist;
+            float fy = F * dy / dist;
+            float fz = F * dz / dist;
 
-            acc_i += force / b[i].mass;
-            b[j].acc -= force / b[j].mass;
+            b.ax[i] += fx / b.mass[i];
+            b.ay[i] += fy / b.mass[i];
+            b.az[i] += fz / b.mass[i];
+
+            b.ax[j] -= fx / b.mass[j];
+            b.ay[j] -= fy / b.mass[j];
+            b.az[j] -= fz / b.mass[j];
         }
-
-        b[i].acc += acc_i;
     }
 }

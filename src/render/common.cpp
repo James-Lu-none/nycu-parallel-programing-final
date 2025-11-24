@@ -22,12 +22,12 @@ float hit_trail(const Trail &t, const ray &r)
     return false;
 }
 
-float hit_planet(const Planet &p, const ray &r)
+float hit_planet(vec3 pos, float r, const ray &ray_obj)
 {
-    vec3 oc = p.pos - r.origin();
-    float a = dot(r.direction(), r.direction());
-    float b = -2.0 * dot(r.direction(), oc);
-    float c = dot(oc, oc) - p.r * p.r;
+    vec3 oc = pos - ray_obj.origin();
+    float a = dot(ray_obj.direction(), ray_obj.direction());
+    float b = -2.0 * dot(ray_obj.direction(), oc);
+    float c = dot(oc, oc) - r * r;
     float discriminant = b * b - 4 * a * c;
     if (discriminant < 0)
     {
@@ -115,13 +115,15 @@ color background(const ray &r)
     return hit_color;
 }
 
-color get_ray_color(const ray &r, const vector<Planet>& bodies, const Trail *trails)
+color get_ray_color(const ray &r, const PlanetsSoA& bodies, const Trail *trails)
 {
     float t = 1e30;
     int idx = -1;
-    for (int i = 0; i < bodies.size(); ++i)
+    int n = bodies.count;
+    for (int i = 0; i < n; ++i)
     {
-        float t_i = hit_planet(bodies[i], r);
+        vec3 pos(bodies.x[i], bodies.y[i], bodies.z[i]);
+        float t_i = hit_planet(pos, bodies.r[i], r);
         if (t_i >= 0 && t_i < t) {
             t = t_i;
             idx = i;
@@ -130,14 +132,15 @@ color get_ray_color(const ray &r, const vector<Planet>& bodies, const Trail *tra
     if (t >= 0 && idx != -1)
     {
         vec3 hit_point = r.at(t);
-        vec3 N = unit_vector(hit_point - bodies[idx].pos);
+        vec3 pos(bodies.x[idx], bodies.y[idx], bodies.z[idx]);
+        vec3 N = unit_vector(hit_point - pos);
         // calculate brightness with dot product of normal and light direction
         float brightness = 0.2f + 0.8f * std::max(dot(N, light_dir), 0.0f);
 
         return {
-            (uint8_t)(bodies[idx].col.r * brightness),
-            (uint8_t)(bodies[idx].col.g * brightness),
-            (uint8_t)(bodies[idx].col.b * brightness),
+            (uint8_t)(bodies.col_r[idx] * brightness),
+            (uint8_t)(bodies.col_g[idx] * brightness),
+            (uint8_t)(bodies.col_b[idx] * brightness),
             255
         };
     }
@@ -145,7 +148,7 @@ color get_ray_color(const ray &r, const vector<Planet>& bodies, const Trail *tra
     return background(r);
 }
 
-color get_ray_color_simd(const ray &r, const vector<Planet>& bodies, const Trail *trails)
+color get_ray_color_simd(const ray &r, const PlanetsSoA& bodies, const Trail *trails)
 {
     // Ray origin and direction broadcast
     __m256 rx = _mm256_set1_ps(r.origin().x());
@@ -163,29 +166,17 @@ color get_ray_color_simd(const ray &r, const vector<Planet>& bodies, const Trail
     __m256 best_t = _mm256_set1_ps(1e30f);
     __m256 best_index = _mm256_set1_ps(-1.0f);
 
-    int n = bodies.size();
+    int n = bodies.count;
     int i = 0;
     for (; i < n - (n % 8); i += 8)
     {
-        // Load positions
-        __m256 px = _mm256_set_ps(
-            bodies[i + 7].pos.x(), bodies[i + 6].pos.x(), bodies[i + 5].pos.x(),
-            bodies[i + 4].pos.x(), bodies[i + 3].pos.x(), bodies[i + 2].pos.x(),
-            bodies[i + 1].pos.x(), bodies[i + 0].pos.x());
-        __m256 py = _mm256_set_ps(
-            bodies[i + 7].pos.y(), bodies[i + 6].pos.y(), bodies[i + 5].pos.y(),
-            bodies[i + 4].pos.y(), bodies[i + 3].pos.y(), bodies[i + 2].pos.y(),
-            bodies[i + 1].pos.y(), bodies[i + 0].pos.y());
-        __m256 pz = _mm256_set_ps(
-            bodies[i + 7].pos.z(), bodies[i + 6].pos.z(), bodies[i + 5].pos.z(),
-            bodies[i + 4].pos.z(), bodies[i + 3].pos.z(), bodies[i + 2].pos.z(),
-            bodies[i + 1].pos.z(), bodies[i + 0].pos.z());
+        // Load positions directly from SoA arrays
+        __m256 px = _mm256_load_ps(&bodies.x[i]);
+        __m256 py = _mm256_load_ps(&bodies.y[i]);
+        __m256 pz = _mm256_load_ps(&bodies.z[i]);
 
         // radii
-        __m256 pr = _mm256_set_ps(
-            bodies[i + 7].r, bodies[i + 6].r, bodies[i + 5].r,
-            bodies[i + 4].r, bodies[i + 3].r, bodies[i + 2].r,
-            bodies[i + 1].r, bodies[i + 0].r);
+        __m256 pr = _mm256_load_ps(&bodies.r[i]);
 
         // oc = pos - origin
         __m256 ocx = _mm256_sub_ps(px, rx);
@@ -265,7 +256,8 @@ color get_ray_color_simd(const ray &r, const vector<Planet>& bodies, const Trail
 
     for (; i < n; ++i)
     {
-        float t_i = hit_planet(bodies[i], r);
+        vec3 pos(bodies.x[i], bodies.y[i], bodies.z[i]);
+        float t_i = hit_planet(pos, bodies.r[i], r);
         if (t_i >= 0 && t_i < t_best) {
             t_best = t_i;
             final_idx = i;
@@ -277,13 +269,14 @@ color get_ray_color_simd(const ray &r, const vector<Planet>& bodies, const Trail
 
     // Now compute shading (scalar)
     vec3 hit_point = r.at(t_best);
-    vec3 N = unit_vector(hit_point - bodies[final_idx].pos);
+    vec3 pos(bodies.x[final_idx], bodies.y[final_idx], bodies.z[final_idx]);
+    vec3 N = unit_vector(hit_point - pos);
     float brightness = 0.2f + 0.8f * std::max(dot(N, light_dir), 0.0f);
 
     color out;
-    out.r = (uint8_t)(bodies[final_idx].col.r * brightness);
-    out.g = (uint8_t)(bodies[final_idx].col.g * brightness);
-    out.b = (uint8_t)(bodies[final_idx].col.b * brightness);
+    out.r = (uint8_t)(bodies.col_r[final_idx] * brightness);
+    out.g = (uint8_t)(bodies.col_g[final_idx] * brightness);
+    out.b = (uint8_t)(bodies.col_b[final_idx] * brightness);
     out.a = 255;
     return out;
 }

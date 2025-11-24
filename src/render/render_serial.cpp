@@ -4,9 +4,9 @@
 #include "ray.hpp"
 
 void render(
-    void *buf,
+    uint32_t *buf,
     const Camera &camera,
-    const vector<Planet>& bodies,
+    const PlanetsSoA& bodies,
     const Trail* trails
 )
 {
