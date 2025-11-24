@@ -14,7 +14,7 @@
 #define ZoneScopedN(x)
 #endif
 
-#define BLOCK_SIZE 128
+#define BLOCK_SIZE 32
 
 __global__ void accelerations_kernel(
     int n,
