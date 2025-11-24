@@ -4,9 +4,9 @@
 
 ```bash
 mkdir build && cd build
-# ACCEL_VARIANT can be one of: serial, pthread, pthread_pair, pthread_pair_persist, pthread_pair_interleaved
+# ACCEL_VARIANT can be one of: serial, pthread, pthread_persist, pthread_interleaved
 # RENDER_VARIANT can be one of: serial, pthread_simd
-cmake -DACCEL_VARIANT=pthread_pair_interleaved -DRENDER_VARIANT=pthread_simd ..
+cmake -DACCEL_VARIANT=pthread_interleaved -DRENDER_VARIANT=pthread_simd ..
 make
 # Run N-body simulation with randomly generated bodies
 ./N_body
