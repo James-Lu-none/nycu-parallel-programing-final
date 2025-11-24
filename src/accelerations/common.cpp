@@ -6,7 +6,7 @@
 
 void accelerations_simd(PlanetsSoA &b)
 {
-    ZoneScopedN("accelerations_simd");
+    ZoneScopedN("accelerations");
 
     int n = b.count;
 

@@ -60,7 +60,7 @@ static void *accelerations_thread(void *arg)
 
 void accelerations(PlanetsSoA &b)
 {
-    ZoneScopedN("accelerations_parallel"); // Renamed from accelerations to accelerations_parallel for consistency
+    ZoneScopedN("accelerations");
     int n = b.count;
     int t_N = NUM_THREADS > n ? n : NUM_THREADS;
 
