@@ -21,6 +21,7 @@ else()
     message(FATAL_ERROR "Unknown accelerations variant: ${ACCEL_VARIANT}")
 endif()
 
+target_sources(accelerations PUBLIC ${PROJECT_SOURCE_DIR}/src/accelerations/common.cpp)
 target_include_directories(accelerations PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
