@@ -13,6 +13,11 @@
 
 using namespace std;
 
+namespace config
+{
+    extern int NUM_THREADS;
+}
+
 #define WIDTH 1200
 #define HEIGHT 800
 
@@ -25,7 +30,5 @@ using namespace std;
 #define EPSILON 1e-6
 
 #define COL_BLACK 0x00000000
-
-#define NUM_THREADS 4
 
 #define view_z 100.0

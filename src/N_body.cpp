@@ -9,6 +9,11 @@
 canvas canvas_buf;
 int w;
 
+namespace config
+{
+    int NUM_THREADS = 0;
+}
+
 int main(int argc, char* argv[])
 {
     tracy::SetThreadName("main_thread");
@@ -44,6 +49,14 @@ int main(int argc, char* argv[])
     PlanetsSoA bodies_soa;
     load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
     load_planets_to_SoA(bodies, bodies_soa);
+
+    config::NUM_THREADS = atoi(argv[2]);
+
+    printf("Using %d threads\n", config::NUM_THREADS);
+    if (config::NUM_THREADS <= 0) {
+        fprintf(stderr, "Invalid number of threads: %d\n", config::NUM_THREADS);
+        return 1; 
+    }
     
     Camera camera = Camera();
 

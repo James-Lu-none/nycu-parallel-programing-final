@@ -62,7 +62,7 @@ void render(
 {
     ZoneScopedN("render_pthread");
 
-    int t_N = NUM_THREADS > bodies.count ? bodies.count : NUM_THREADS;
+    int t_N = config::NUM_THREADS > bodies.count ? bodies.count : config::NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
     RenderTaskArgs *args = (RenderTaskArgs *)malloc(sizeof(RenderTaskArgs) * t_N);

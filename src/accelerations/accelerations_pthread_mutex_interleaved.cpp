@@ -103,7 +103,7 @@ static void *accelerations_thread(void *arg)
 
 void init_workers(PlanetsSoA &b)
 {
-    int t_N = NUM_THREADS > b.count ? b.count : NUM_THREADS;
+    int t_N = config::NUM_THREADS > b.count ? b.count : config::NUM_THREADS;
     workers = (Worker *)calloc(t_N, sizeof(Worker));
     for (int i = 0; i < t_N; i++)
     {
@@ -120,7 +120,7 @@ void init_workers(PlanetsSoA &b)
 
 void destroy_workers(PlanetsSoA &b)
 {
-    int t_N = NUM_THREADS > b.count ? b.count : NUM_THREADS;
+    int t_N = config::NUM_THREADS > b.count ? b.count : config::NUM_THREADS;
     for (int i = 0; i < t_N; i++)
     {
         pthread_mutex_lock(&workers[i].mutex);
@@ -139,7 +139,7 @@ void destroy_workers(PlanetsSoA &b)
 void accelerations(PlanetsSoA &b)
 {
     int n = b.count;
-    int t_N = NUM_THREADS > n ? n : NUM_THREADS;
+    int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
     float **t_ax = new float *[t_N];
     float **t_ay = new float *[t_N];

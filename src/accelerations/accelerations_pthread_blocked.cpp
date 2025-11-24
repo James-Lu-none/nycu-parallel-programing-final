@@ -62,7 +62,7 @@ void accelerations(PlanetsSoA &b)
 {
     ZoneScopedN("accelerations");
     int n = b.count;
-    int t_N = NUM_THREADS > n ? n : NUM_THREADS;
+    int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
     pthread_t *threads = new pthread_t[t_N]; // Changed from malloc to new
     AccelerationArgs *args = new AccelerationArgs[t_N]; // Changed from malloc to new
