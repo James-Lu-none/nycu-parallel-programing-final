@@ -7,6 +7,7 @@
 #include "config.hpp"
 
 canvas canvas_buf;
+int w;
 
 int main(int argc, char* argv[])
 {
@@ -78,6 +79,14 @@ int main(int argc, char* argv[])
         Uint32 now = SDL_GetTicks();
         float frame_dt = (now - prev) / 1000.0;
         prev = now;
+        frame_count++;
+        total_frame_time += frame_dt;
+        float avg_frame_time = total_frame_time / frame_count;
+        // Track frame time
+        TracyPlot("Frame Time (ms)", frame_dt * 1000.0);
+        TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
+
+        // prevent accumulator adds to much when frame_dt is too large, aka. frame rate is too low (lower then 20 FPS)
         if (frame_dt > 0.05) frame_dt = 0.05;
         accumulator += frame_dt;
 
@@ -112,14 +121,6 @@ int main(int argc, char* argv[])
             SDL_BlitSurface(surf, NULL, win_surf, NULL);
             SDL_UpdateWindowSurface(win);
         }
-        
-        // Track frame time
-        frame_count++;
-        total_frame_time += frame_dt;
-        float avg_frame_time = total_frame_time / frame_count;
-        
-        TracyPlot("Frame Time (ms)", frame_dt * 1000.0);
-        TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
     }
     #ifdef INIT_REQUIRED
         destroy_workers(bodies_soa);
