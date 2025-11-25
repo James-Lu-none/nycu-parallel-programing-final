@@ -79,8 +79,12 @@ run_benchmark() {
     make -j$(nproc)
     cd ..
 
-    # Run tests
-    for ((i=2; i<=10; i+=2)); do
+    local threads="2 4 6 8 10"
+    if  [[ "$variant" =~ cuda || "$variant" =~ serial ]]; then
+        local threads="1"
+    fi
+    
+    for i in $threads; do
         # Zero-pad the index
         local padded_i=$(printf "%02d" $i)
         
@@ -100,7 +104,7 @@ run_benchmark() {
         kill "$PID" || true
         wait "$PID" 2>/dev/null || true
         
-        sleep 0.5
+        sleep 2
         "$TRACY_CSVEXPORT" "$TRACY_DIR/${prefix}_${variant}_${padded_i}.tracy" > "$OUTPUT_DIR/${prefix}_${variant}_${padded_i}.csv"
     done
 }
