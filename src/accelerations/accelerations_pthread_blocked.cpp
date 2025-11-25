@@ -1,6 +1,5 @@
 #include "accelerations.hpp"
 #include "planet.hpp"
-
 #include "config.hpp"
 
 typedef struct

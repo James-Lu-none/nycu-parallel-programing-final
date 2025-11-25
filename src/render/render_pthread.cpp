@@ -7,7 +7,7 @@ typedef struct {
     void* buf;
     const Camera* camera;
     // using ref of bodies here is invalid since we initialized args with malloc, so use pointer here
-    const vector<Planet>* bodies;
+    const PlanetsSoA* bodies;
     const Trail* trails;
     int start_row;
     int end_row;
@@ -29,7 +29,7 @@ void *render_thread(void *args_void){
     const int end_row = args->end_row;
     color *buf = (color *)malloc(sizeof(color) * WIDTH * (end_row - start_row));
     const Camera *camera = args->camera;
-    const vector<Planet>* bodies = args->bodies;
+    const PlanetsSoA* bodies = args->bodies;
     const Trail *trails = args->trails;
 
     for (int j = start_row; j < end_row; ++j){
@@ -54,9 +54,9 @@ void *render_thread(void *args_void){
 
 
 void render(
-    void *buf,
+    uint32_t *buf,
     const Camera &camera,
-    const vector<Planet>& bodies,
+    const PlanetsSoA& bodies,
     const Trail* trails
 )
 {

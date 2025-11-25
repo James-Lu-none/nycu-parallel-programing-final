@@ -5,7 +5,8 @@ if [ ! -d "build" ]; then
 fi
 
 cd build
-cmake -DACCEL_VARIANT=pthread_balanced -DRENDER_VARIANT=pthread ..
+rm -rf *
+cmake -DACCEL_VARIANT=pthread_blocked -DRENDER_VARIANT=pthread ..
 # cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT=pthread ..
 make
-./N_body
+./N_body assets/random_1000.txt 8

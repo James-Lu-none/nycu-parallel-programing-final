@@ -45,17 +45,18 @@ int main(int argc, char* argv[])
     }
 
     vector<Planet> bodies;
+    PlanetsSoA bodies_soa;
     load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
+    load_planets_to_SoA(bodies, bodies_soa);
 
     config::NUM_THREADS = atoi(argv[2]);
 
     printf("Using %d threads\n", config::NUM_THREADS);
-    if (config::NUM_THREADS <= 0)
-    {
+    if (config::NUM_THREADS <= 0) {
         fprintf(stderr, "Invalid number of threads: %d\n", config::NUM_THREADS);
-        return 1;
+        return 1; 
     }
-
+    
     Camera camera = Camera();
 
     bool running = true;
@@ -87,7 +88,7 @@ int main(int argc, char* argv[])
                 if (ev.type == SDL_QUIT)
                     running = false;
             }
-            camera.update_view(bodies);
+            camera.update_view(bodies_soa);
         }
         
         Uint32 now = SDL_GetTicks();
@@ -107,7 +108,7 @@ int main(int argc, char* argv[])
         {
             ZoneScopedN("PhysicsStep");
             while (accumulator >= FIXED_DT) {
-                integrator(bodies, FIXED_DT);
+                integrator(bodies_soa, FIXED_DT);
                 accumulator -= FIXED_DT;
             }
         }
@@ -124,7 +125,7 @@ int main(int argc, char* argv[])
             render(
                 (uint32_t *)surf->pixels,
                 camera,
-                bodies,
+                bodies_soa,
                 nullptr
             );
             SDL_UnlockSurface(surf);

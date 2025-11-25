@@ -7,14 +7,14 @@
 #include <ctime>
 #include <cstdlib>
 #include <vector>
-#ifndef SKIP_TRACY
+#ifndef __CUDACC__
 #include "tracy/Tracy.hpp"
 #endif
 
 #ifdef __CUDACC__
-#define CUDA_HOSTDEV __host__ __device__
+#define CUDA_CALLABLE __host__ __device__
 #else
-#define CUDA_HOSTDEV
+#define CUDA_CALLABLE
 #endif
 
 using namespace std;

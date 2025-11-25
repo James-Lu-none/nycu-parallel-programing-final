@@ -7,7 +7,7 @@
 #include "config.hpp"
 
 void render(
-    void *buf,
+    uint32_t *pixels,
     const Camera &camera,
     const vector<Planet>& bodies,
     const Trail* trails = nullptr

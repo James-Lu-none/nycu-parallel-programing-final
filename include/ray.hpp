@@ -6,14 +6,14 @@
 class ray
 {
 public:
-    CUDA_HOSTDEV ray() {}
+    CUDA_CALLABLE ray() {}
 
-    CUDA_HOSTDEV ray(const point3 &origin, const vec3 &direction) : orig(origin), dir(direction) {}
+    CUDA_CALLABLE ray(const point3 &origin, const vec3 &direction) : orig(origin), dir(direction) {}
 
-    CUDA_HOSTDEV const point3 &origin() const { return orig; }
-    CUDA_HOSTDEV const vec3 &direction() const { return dir; }
+    CUDA_CALLABLE const point3 &origin() const { return orig; }
+    CUDA_CALLABLE const vec3 &direction() const { return dir; }
 
-    CUDA_HOSTDEV point3 at(float t) const
+    CUDA_CALLABLE point3 at(float t) const
     {
         return orig + t * dir;
     }
