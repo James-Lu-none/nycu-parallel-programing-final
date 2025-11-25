@@ -152,7 +152,7 @@ void render(
         {
             render_workers[i].args.start_row = i * rows_per_thread;
             render_workers[i].args.end_row = (i == t_N - 1) ? HEIGHT : (i + 1) * rows_per_thread;
-            render_workers[i].args.buf = buf;
+            render_workers[i].args.buf = pixels;
             render_workers[i].args.camera = &camera;
             render_workers[i].args.bodies = &bodies;
             render_workers[i].args.trails = trails;

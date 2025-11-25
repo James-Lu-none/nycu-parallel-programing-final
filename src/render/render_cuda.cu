@@ -134,5 +134,5 @@ void render(
     render_kernel<<<gridSize, blockSize>>>(d_render_buf, camera, d_render_bodies, d_render_trails);
 
     // Copy result back
-    cudaMemcpy(buf, d_render_buf, WIDTH * HEIGHT * sizeof(color), cudaMemcpyDeviceToHost);
+    cudaMemcpy(pixels, d_render_buf, WIDTH * HEIGHT * sizeof(color), cudaMemcpyDeviceToHost);
 }
