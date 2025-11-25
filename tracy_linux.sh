@@ -1,5 +1,17 @@
 #!/bin/bash
+set -e
 
+# Configuration
+SLEEP_TIME=10
+TRACY_CAPTURE="./tracy-capture"
+TRACY_CSVEXPORT="./tracy-csvexport"
+BUILD_DIR="build"
+OUTPUT_DIR="eval"
+TRACY_DIR="tracy"
+ASSETS_DIR="./assets"
+INPUT_FILE="random_1000.txt"
+
+# Arrays
 accs=(
     pthread_blocked
     pthread_interleaved
@@ -15,7 +27,6 @@ accs=(
     cuda_interleaved
 )
 
-
 renders=(
     serial
     serial_simd
@@ -26,57 +37,83 @@ renders=(
     cuda
 )
 
-sleep_time=10
+# Ensure directories exist
+mkdir -p "$TRACY_DIR"
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$BUILD_DIR"
 
-if [ ! -d "tracy" ]; then
-    mkdir tracy
-fi
-if [ ! -d "eval" ]; then
-    mkdir eval
-fi
+# Cleanup function to kill background processes on exit
+cleanup() {
+    # Kill any child processes of this script
+    pkill -P $$ || true
+}
+trap cleanup EXIT
 
+# Function to wait for port
+wait_for_port() {
+    local port=$1
+    echo "Waiting for Tracy server on port $port..."
+    while ! nc -z localhost "$port"; do
+        sleep 1
+    done
+}
+
+# Function to run benchmark
+run_benchmark() {
+    local type=$1      # ACCEL or RENDER
+    local variant=$2   # Variant name
+    local prefix=$3    # Output filename prefix
+
+    echo "=== Benchmarking $type: $variant ==="
+
+    # Build
+    cd "$BUILD_DIR" || exit
+    # Clean build directory safely
+    find . -maxdepth 1 ! -name . -exec rm -rf {} +
+    
+    if [ "$type" == "ACCEL" ]; then
+        cmake -DACCEL_VARIANT="$variant" -DRENDER_VARIANT=serial ..
+    else
+        cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT="$variant" ..
+    fi
+    make -j$(nproc)
+    cd ..
+
+    # Run tests
+    for ((i=2; i<=10; i+=2)); do
+        # Zero-pad the index
+        local padded_i=$(printf "%02d" $i)
+        
+        echo "Running test with input size $i (Output: ${prefix}_${variant}_${padded_i})"
+
+        ./"$BUILD_DIR"/N_body "$ASSETS_DIR/$INPUT_FILE" "$i" &
+        local PID=$!
+
+        wait_for_port 8086
+        sleep 1
+
+        "$TRACY_CAPTURE" -a localhost -o "$TRACY_DIR/${prefix}_${variant}_${padded_i}.tracy" &
+        
+        sleep "$SLEEP_TIME"
+        
+        # Kill N_body
+        kill "$PID" || true
+        wait "$PID" 2>/dev/null || true
+        
+        sleep 0.5
+        "$TRACY_CSVEXPORT" "$TRACY_DIR/${prefix}_${variant}_${padded_i}.tracy" > "$OUTPUT_DIR/${prefix}_${variant}_${padded_i}.csv"
+    done
+}
+
+# Run Acceleration Benchmarks
 for acc in "${accs[@]}"; do
-    cd build || exit
-    rm -rf *
-    cmake -DACCEL_VARIANT=$acc -DRENDER_VARIANT=serial ..
-    make
-    cd ..
-    for ((i=2; i<=10; i+=2)); do
-        ./build/N_body ./assets/random_1000.txt $i &
-        PID=$!
-        while ! nc -z localhost 8086; do
-            echo "Waiting for Tracy server to start..."
-            sleep 1
-        done
-        sleep 1
-        ./tracy-capture -a localhost -o ./tracy/accelerations_${acc}_$i.tracy &
-        sleep $sleep_time
-        kill $PID
-        sleep 0.5
-        ./tracy-csvexport ./tracy/accelerations_${acc}_$i.tracy > ./eval/accelerations_${acc}_$i.csv
-    done
+    run_benchmark "ACCEL" "$acc" "accelerations"
 done
 
+# Run Render Benchmarks
 for render in "${renders[@]}"; do
-    cd build || exit
-    rm -rf *
-    cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT=$render ..
-    make
-    cd ..
-    for ((i=2; i<=10; i+=2)); do
-        ./build/N_body ./assets/random_1000.txt $i &
-        PID=$!
-        while ! nc -z localhost 8086; do
-            echo "Waiting for Tracy server to start..."
-            sleep 1
-        done
-        sleep 1
-        ./tracy-capture -a localhost -o ./tracy/render_${render}_$i.tracy &
-        sleep $sleep_time
-        kill $PID
-        sleep 0.5
-        ./tracy-csvexport ./tracy/render_${render}_$i.tracy > ./eval/render_${render}_$i.csv
-    done
+    run_benchmark "RENDER" "$render" "render"
 done
 
+echo "Running evaluation script..."
 python eval.py
