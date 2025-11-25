@@ -67,9 +67,9 @@ static void *accelerations_thread(void *arg)
             ZoneScopedN("compute_accelerations_simd");
             
             const int stride_f = sizeof(Planet) / sizeof(float);
-            float* base_pos = &b[0].pos.e[0];
-            float* base_mass = reinterpret_cast<float*>(
-                reinterpret_cast<char*>(&b[0]) + offsetof(Planet, mass)
+            const float* base_pos = &b[0].pos.e[0];
+            const float* base_mass = reinterpret_cast<const float*>(
+                reinterpret_cast<const char*>(&b[0]) + offsetof(Planet, mass)
             );
 
             const __m256 G_v = _mm256_set1_ps((float)G);
