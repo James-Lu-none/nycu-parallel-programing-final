@@ -10,7 +10,7 @@ canvas canvas_buf;
 
 namespace config
 {
-    int config::NUM_THREADS = 0;
+    int NUM_THREADS = 0;
 }
 
 int main(int argc, char* argv[])
@@ -45,16 +45,14 @@ int main(int argc, char* argv[])
     }
 
     vector<Planet> bodies;
-    PlanetsSoA bodies_soa;
     load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
-    load_planets_to_SoA(bodies, bodies_soa);
 
-    config::config::NUM_THREADS = atoi(argv[2]);
+    config::NUM_THREADS = atoi(argv[2]);
 
-    printf("Using %d threads\n", config::config::NUM_THREADS);
-    if (config::config::NUM_THREADS <= 0)
+    printf("Using %d threads\n", config::NUM_THREADS);
+    if (config::NUM_THREADS <= 0)
     {
-        fprintf(stderr, "Invalid number of threads: %d\n", config::config::NUM_THREADS);
+        fprintf(stderr, "Invalid number of threads: %d\n", config::NUM_THREADS);
         return 1;
     }
 
