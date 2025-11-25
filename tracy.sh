@@ -9,6 +9,8 @@ accs=(
     pthread_simd_interleaved
     serial_simd
     serial
+    cuda_blocked
+    cuda_interleaved
 )
 
 
@@ -19,7 +21,7 @@ renders=(
     cuda
 )
 
-sleep_time=30
+sleep_time=10
 
 if [ ! -d "tracy" ]; then
     mkdir tracy
@@ -40,7 +42,10 @@ for ((i=2; i<=10; i+=2)); do
         ./tracy-capture.exe -a localhost -o ./tracy/accelerations_${acc}_$i.tracy &
         sleep $sleep_time
         kill $PID
-        sleep 0.5
+        while ! nc -z localhost 8086; do
+            echo "Waiting for Tracy server to start..."
+            sleep 1
+        done
         ./tracy-csvexport.exe ./tracy/accelerations_${acc}_$i.tracy > ./eval/accelerations_${acc}_$i.csv
     done
 
@@ -55,9 +60,14 @@ for ((i=2; i<=10; i+=2)); do
         ./tracy-capture.exe -a localhost -o ./tracy/render_${render}_$i.tracy &
         sleep $sleep_time
         kill $PID
-        sleep 0.5
+        while ! nc -z localhost 8086; do
+            echo "Waiting for Tracy server to start..."
+            sleep 1
+        done
         ./tracy-csvexport.exe ./tracy/render_${render}_$i.tracy > ./eval/render_${render}_$i.csv
     done
 done
+
+sleep 1
 
 python eval.py

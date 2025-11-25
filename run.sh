@@ -6,7 +6,7 @@ fi
 
 cd build
 rm -rf *
-cmake -DACCEL_VARIANT=serial_simd -DRENDER_VARIANT=pthread ..
+cmake -DACCEL_VARIANT=pthread_blocked -DRENDER_VARIANT=pthread ..
 # cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT=pthread ..
 make
-./N_body
+./N_body assets/random_1000.txt 8

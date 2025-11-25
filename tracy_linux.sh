@@ -11,6 +11,8 @@ accs=(
     pthread_simd_interleaved
     serial_simd
     serial
+    cuda_blocked
+    cuda_interleaved
 )
 
 
@@ -39,7 +41,7 @@ find_tool() {
         echo "$HOME/Desktop/tracy/$tool_name/build/$tool_name"
         return 0
     fi
-    
+
     if [ -f "$HOME/Desktop/tracy/$tool_name/build/tracy-$tool_name" ]; then
         echo "$HOME/Desktop/tracy/$tool_name/build/tracy-$tool_name"
         return 0
