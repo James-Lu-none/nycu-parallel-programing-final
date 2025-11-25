@@ -5,3 +5,5 @@ build_soa
 build_cuda
 tracy
 eval
+.env
+*.png
