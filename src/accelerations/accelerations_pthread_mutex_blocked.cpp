@@ -5,12 +5,10 @@
 
 typedef struct
 {
-    PlanetsSoA* b;
+    const vector<Planet> *b;
     int t_id;
     int t_N;
-    float *t_ax;
-    float *t_ay;
-    float *t_az;
+    vec3 *t_acc;
 } AccelerationArgs;
 
 typedef struct

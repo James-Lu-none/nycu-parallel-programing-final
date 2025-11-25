@@ -73,7 +73,7 @@ void render(
     {
         args[i].start_row = i * rows_per_thread;
         args[i].end_row = (i == t_N - 1) ? HEIGHT : (i + 1) * rows_per_thread;
-        args[i].buf = buf;
+        args[i].buf = pixels;
         args[i].camera = &camera;
         args[i].bodies = &bodies;
         args[i].trails = trails;
