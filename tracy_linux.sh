@@ -38,6 +38,10 @@ renders=(
 )
 
 # Ensure directories exist
+
+rm -r "$TRACY_DIR" || true
+rm -r "$OUTPUT_DIR" || true
+
 mkdir -p "$TRACY_DIR"
 mkdir -p "$OUTPUT_DIR"
 mkdir -p "$BUILD_DIR"
