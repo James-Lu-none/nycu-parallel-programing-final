@@ -14,6 +14,20 @@ make
 ./N_body ../assets/dense_system_demo.txt
 ```
 
+## build tracy tools
+
+```bash
+git clone https://github.com/wolfpld/tracy
+git checkout v0.12.2
+cd tracy
+
+cmake -B ./capture/build -S ./capture -DCMAKE_BUILD_TYPE=Release
+cmake --build ./capture/build --parallel
+
+cmake -B ./csvexport/build -S ./csvexport -DCMAKE_BUILD_TYPE=Release
+cmake --build ./csvexport/build --parallel
+```
+
 ## accelerations_thread_v1
 
 In accelerations_thread_v1, the original iteration on NUM_BODIES is divided to NUM_THREADS to perform parallel acceleration calculation,
