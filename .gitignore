@@ -3,3 +3,5 @@ gmon.out
 build
 build_soa
 build_cuda
+tracy
+eval
