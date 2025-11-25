@@ -8,6 +8,11 @@
 
 canvas canvas_buf;
 
+namespace config
+{
+    int NUM_THREADS = 0;
+}
+
 int main(int argc, char* argv[])
 {
     tracy::SetThreadName("main_thread");
@@ -40,7 +45,18 @@ int main(int argc, char* argv[])
     }
 
     vector<Planet> bodies;
+    PlanetsSoA bodies_soa;
     load_planets_from_file(argc > 1 ? argv[1] : nullptr, bodies);
+    load_planets_to_SoA(bodies, bodies_soa);
+
+    config::NUM_THREADS = atoi(argv[2]);
+
+    printf("Using %d threads\n", config::NUM_THREADS);
+    if (config::NUM_THREADS <= 0)
+    {
+        fprintf(stderr, "Invalid number of threads: %d\n", config::NUM_THREADS);
+        return 1;
+    }
 
     Camera camera = Camera();
 
@@ -76,6 +92,14 @@ int main(int argc, char* argv[])
         Uint32 now = SDL_GetTicks();
         float frame_dt = (now - prev) / 1000.0;
         prev = now;
+        frame_count++;
+        total_frame_time += frame_dt;
+        float avg_frame_time = total_frame_time / frame_count;
+        // Track frame time
+        TracyPlot("Frame Time (ms)", frame_dt * 1000.0);
+        TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
+
+        // prevent accumulator adds to much when frame_dt is too large, aka. frame rate is too low (lower then 20 FPS)
         if (frame_dt > 0.05) frame_dt = 0.05;
         accumulator += frame_dt;
 
@@ -97,7 +121,7 @@ int main(int argc, char* argv[])
             ZoneScopedN("RenderStep");
             SDL_LockSurface(surf);
             render(
-                surf->pixels,
+                (uint32_t *)surf->pixels,
                 camera,
                 bodies,
                 nullptr
@@ -110,14 +134,6 @@ int main(int argc, char* argv[])
             SDL_BlitSurface(surf, NULL, win_surf, NULL);
             SDL_UpdateWindowSurface(win);
         }
-        
-        // Track frame time
-        frame_count++;
-        total_frame_time += frame_dt;
-        float avg_frame_time = total_frame_time / frame_count;
-        
-        TracyPlot("Frame Time (ms)", frame_dt * 1000.0);
-        TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
     }
     #ifdef INIT_REQUIRED
         destroy_workers(bodies);
