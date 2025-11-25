@@ -73,6 +73,9 @@ int main(int argc, char* argv[])
     #ifdef INIT_REQUIRED
         init_workers(bodies);
     #endif
+    #ifdef RENDER_INIT_REQUIRED
+        init_render_workers();
+    #endif
     while (running)
     {
         ZoneScopedN("MainLoop");
@@ -137,6 +140,9 @@ int main(int argc, char* argv[])
     }
     #ifdef INIT_REQUIRED
         destroy_workers(bodies);
+    #endif
+    #ifdef RENDER_INIT_REQUIRED
+        destroy_render_workers();
     #endif
     SDL_DestroyWindow(win);
     SDL_Quit();

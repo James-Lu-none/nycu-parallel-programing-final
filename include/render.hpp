@@ -13,6 +13,9 @@ void render(
     const Trail* trails = nullptr
 );
 
+void init_render_workers();
+void destroy_render_workers();
+
 color get_ray_color(const ray &r, const vector<Planet>& bodies, const Trail *trails);
 color get_ray_color_simd(const ray &r, const vector<Planet>& bodies, const Trail *trails);
 
