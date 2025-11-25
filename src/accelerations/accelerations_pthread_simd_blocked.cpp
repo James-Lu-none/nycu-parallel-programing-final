@@ -128,7 +128,7 @@ void accelerations(vector<Planet> &b)
 {
     ZoneScopedN("accelerations");
     int n = b.size();
-    int t_N = NUM_THREADS > n ? n : NUM_THREADS;
+    int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * t_N);
     AccelerationArgs *args = (AccelerationArgs *)malloc(sizeof(AccelerationArgs) * t_N);

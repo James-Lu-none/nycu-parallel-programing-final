@@ -95,7 +95,7 @@ static void *accelerations_thread(void *arg)
 
 void init_workers(vector<Planet> &b)
 {
-    int t_N = NUM_THREADS > b.size() ? b.size() : NUM_THREADS;
+    int t_N = config::NUM_THREADS > b.size() ? b.size() : config::NUM_THREADS;
     workers = (Worker *)calloc(t_N, sizeof(Worker));
     for (int i = 0; i < t_N; i++)
     {
@@ -112,7 +112,7 @@ void init_workers(vector<Planet> &b)
 
 void destroy_workers(vector<Planet> &b)
 {
-    int t_N = NUM_THREADS > b.size() ? b.size() : NUM_THREADS;
+    int t_N = config::NUM_THREADS > b.size() ? b.size() : config::NUM_THREADS;
     for (int i = 0; i < t_N; i++)
     {
         pthread_mutex_lock(&workers[i].mutex);
@@ -131,7 +131,7 @@ void destroy_workers(vector<Planet> &b)
 void accelerations(vector<Planet> &b)
 {
     int n = b.size();
-    int t_N = NUM_THREADS > n ? n : NUM_THREADS;
+    int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
     vec3 **t_acc = new vec3*[t_N];
     for (int t = 0; t < t_N; ++t)
