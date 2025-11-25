@@ -4,7 +4,7 @@
 #include <immintrin.h>
 #include <cmath> // For std::sqrt
 
-void accelerations_simd(PlanetsSoA &b)
+void accelerations(PlanetsSoA &b)
 {
     ZoneScopedN("accelerations");
 
