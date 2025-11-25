@@ -2,3 +2,5 @@ N_body
 gmon.out
 build
 build_cuda
+eval
+tracy
