@@ -53,14 +53,12 @@ static void *accelerations_thread(void *arg)
         worker->done = false;
         pthread_mutex_unlock(&worker->mutex);
 
-        PlanetsSoA& b = *A->b;
+        const vector<Planet> &b = *A->b;
         int t_id = A->t_id;
         int t_N = A->t_N;
-        float *ax = A->t_ax;
-        float *ay = A->t_ay;
-        float *az = A->t_az;
+        vec3 *acc = A->t_acc;
 
-        int n = b.count;
+        int n = b.size();
         int chunk = (n + t_N - 1) / t_N;
         int i_start = t_id * chunk;
         int i_end = (i_start + chunk < n) ? (i_start + chunk) : n;
@@ -69,18 +67,14 @@ static void *accelerations_thread(void *arg)
             ZoneScopedN("compute_accelerations");
             for (int i = i_start; i < i_end; ++i)
             {
-                for (int j = i+1; j < n; ++j)
+                for (int j = i + 1; j < n; ++j)
                 {
-                    float dx = b.x[j] - b.x[i];
-                    float dy = b.y[j] - b.y[i];
-                    float dz = b.z[j] - b.z[i];
-                    float dist2 = dx*dx + dy*dy + dz*dz + EPSILON;
+                    vec3 dpos = b[j].pos - b[i].pos;
+                    float dist2 = dpos.length_squared() + EPSILON;
                     float dist = sqrt(dist2);
 
-                    float F = (G * b.mass[i] * b.mass[j]) / dist2;
-                    float fx = F * dx / dist;
-                    float fy = F * dy / dist;
-                    float fz = F * dz / dist;
+                    float F = (G * b[i].mass * b[j].mass) / dist2;
+                    vec3 force = F * dpos / dist;
 
                     acc[i] += force / b[i].mass;
                     acc[j] -= force / b[j].mass;
@@ -99,7 +93,7 @@ static void *accelerations_thread(void *arg)
     return NULL;
 }
 
-void init_workers(PlanetsSoA &b)
+void init_workers(vector<Planet> &b)
 {
     int t_N = config::NUM_THREADS > b.size() ? b.size() : config::NUM_THREADS;
     workers = (Worker *)calloc(t_N, sizeof(Worker));
@@ -116,7 +110,7 @@ void init_workers(PlanetsSoA &b)
     }
 }
 
-void destroy_workers(PlanetsSoA &b)
+void destroy_workers(vector<Planet> &b)
 {
     int t_N = config::NUM_THREADS > b.size() ? b.size() : config::NUM_THREADS;
     for (int i = 0; i < t_N; i++)
@@ -134,29 +128,22 @@ void destroy_workers(PlanetsSoA &b)
     workers = NULL;
 }
 
-void accelerations(PlanetsSoA &b)
+void accelerations(vector<Planet> &b)
 {
     int n = b.size();
     int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
+    vec3 **t_acc = new vec3 *[t_N];
     for (int t = 0; t < t_N; ++t)
     {
-        t_ax[t] = new float[n]();
-        t_ay[t] = new float[n]();
-        t_az[t] = new float[n]();
+        t_acc[t] = new vec3[n]();
 
         workers[t].args.b = &b;
-        workers[t].args.t_ax = t_ax[t];
-        workers[t].args.t_ay = t_ay[t];
-        workers[t].args.t_az = t_az[t];
+        workers[t].args.t_acc = t_acc[t];
     }
 
     for (int i = 0; i < n; ++i)
-    {
-        b.ax[i] = 0.0f;
-        b.ay[i] = 0.0f;
-        b.az[i] = 0.0f;
-    }
+        b[i].acc = vec3(0.0, 0.0, 0.0);
 
     // Wake up all workers
     {
@@ -191,17 +178,11 @@ void accelerations(PlanetsSoA &b)
         {
             for (int i = 0; i < n; ++i)
             {
-                b.ax[i] += t_ax[t][i];
-                b.ay[i] += t_ay[t][i];
-                b.az[i] += t_az[t][i];
+                b[i].acc += t_acc[t][i];
             }
-            delete[] t_ax[t];
-            delete[] t_ay[t];
-            delete[] t_az[t];
+            delete[] t_acc[t];
         }
 
-        delete[] t_ax;
-        delete[] t_ay;
-        delete[] t_az;
+        delete[] t_acc;
     }
 }
