@@ -4,10 +4,10 @@
 #include "ray.hpp"
 
 void render(
-    void *buf,
+    uint32_t *pixels,
     const Camera &camera,
-    const vector<Planet>& bodies,
-    const Trail* trails
+    const vector<Planet> &bodies,
+    const Trail *trails
 )
 {
     ZoneScopedN("render_serial");
@@ -20,7 +20,7 @@ void render(
             ray r(camera.center, ray_direction);
 
             color pixel_color = get_ray_color_simd(r, bodies, trails);
-            ((color*)buf)[j * WIDTH + i] = pixel_color;
+            ((color*)pixels)[j * WIDTH + i] = pixel_color;
         }
     }
 }

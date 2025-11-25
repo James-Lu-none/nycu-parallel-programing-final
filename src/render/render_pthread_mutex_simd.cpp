@@ -134,10 +134,11 @@ void destroy_render_workers()
 }
 
 void render(
-    void *buf,
+    uint32_t *pixels,
     const Camera &camera,
     const vector<Planet> &bodies,
-    const Trail *trails)
+    const Trail *trails
+)
 {
     ZoneScopedN("render_mutex");
 

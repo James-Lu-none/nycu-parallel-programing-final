@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
                 if (ev.type == SDL_QUIT)
                     running = false;
             }
-            camera.update_view(bodies_soa);
+            camera.update_view(bodies);
         }
         
         Uint32 now = SDL_GetTicks();
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
         {
             ZoneScopedN("PhysicsStep");
             while (accumulator >= FIXED_DT) {
-                integrator(bodies_soa, FIXED_DT);
+                integrator(bodies, FIXED_DT);
                 accumulator -= FIXED_DT;
             }
         }
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
             render(
                 (uint32_t *)surf->pixels,
                 camera,
-                bodies_soa,
+                bodies,
                 nullptr
             );
             SDL_UnlockSurface(surf);

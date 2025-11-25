@@ -3,37 +3,40 @@
 #include "vec3.hpp"
 #include "ray.hpp"
 
-typedef struct {
-    void* buf;
-    const Camera* camera;
+typedef struct
+{
+    void *buf;
+    const Camera *camera;
     // using ref of bodies here is invalid since we initialized args with malloc, so use pointer here
-    const PlanetsSoA* bodies;
-    const Trail* trails;
+    const vector<Planet> *bodies;
+    const Trail *trails;
     int start_row;
     int end_row;
     int thread_id;
 } RenderTaskArgs;
 
-
-void *render_thread(void *args_void){
+void *render_thread(void *args_void)
+{
     RenderTaskArgs *args = (RenderTaskArgs *)args_void;
-    
+
     // Set Tracy thread name
     char threadName[32];
     snprintf(threadName, sizeof(threadName), "RenderThread_%d", args->thread_id);
     tracy::SetThreadName(threadName);
-    
+
     ZoneScopedN("render_thread_work");
-    
+
     const int start_row = args->start_row;
     const int end_row = args->end_row;
     color *buf = (color *)malloc(sizeof(color) * WIDTH * (end_row - start_row));
     const Camera *camera = args->camera;
-    const PlanetsSoA* bodies = args->bodies;
+    const vector<Planet> *bodies = args->bodies;
     const Trail *trails = args->trails;
 
-    for (int j = start_row; j < end_row; ++j){
-        for (int i = 0; i < WIDTH; ++i){
+    for (int j = start_row; j < end_row; ++j)
+    {
+        for (int i = 0; i < WIDTH; ++i)
+        {
             float u = float(i) / (WIDTH - 1);
             float v = float(j) / (HEIGHT - 1);
             vec3 pixel_center = camera->pixel00_loc + (i * camera->pixel_delta_u) + (j * camera->pixel_delta_v);
@@ -45,19 +48,17 @@ void *render_thread(void *args_void){
     }
 
     memcpy(
-        (color*)args->buf + (start_row * WIDTH),
+        (color *)args->buf + (start_row * WIDTH),
         buf,
-        sizeof(color) * WIDTH * (end_row - start_row)
-    );
+        sizeof(color) * WIDTH * (end_row - start_row));
     return NULL;
 }
 
-
 void render(
-    uint32_t *buf,
+    uint32_t *pixels,
     const Camera &camera,
-    const PlanetsSoA& bodies,
-    const Trail* trails
+    const vector<Planet> &bodies,
+    const Trail *trails
 )
 {
     ZoneScopedN("render_pthread");
@@ -68,7 +69,8 @@ void render(
     RenderTaskArgs *args = (RenderTaskArgs *)malloc(sizeof(RenderTaskArgs) * t_N);
 
     int rows_per_thread = HEIGHT / t_N;
-    for (int i = 0; i < t_N; ++i){
+    for (int i = 0; i < t_N; ++i)
+    {
         args[i].start_row = i * rows_per_thread;
         args[i].end_row = (i == t_N - 1) ? HEIGHT : (i + 1) * rows_per_thread;
         args[i].buf = buf;
@@ -78,7 +80,8 @@ void render(
         args[i].thread_id = i;
         pthread_create(&threads[i], NULL, render_thread, (void *)&args[i]);
     }
-    for (int i = 0; i < t_N; ++i){
+    for (int i = 0; i < t_N; ++i)
+    {
         pthread_join(threads[i], NULL);
     }
     free(threads);

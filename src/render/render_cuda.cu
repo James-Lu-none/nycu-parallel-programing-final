@@ -106,10 +106,10 @@ static Trail* d_render_trails = nullptr;
 static color* d_render_buf = nullptr;
 
 void render(
-    void *buf,
+    uint32_t *pixels,
     const Camera &camera,
-    const vector<Planet>& bodies,
-    const Trail* trails
+    const vector<Planet> &bodies,
+    const Trail *trails
 )
 {
     // Allocate device memory if needed
