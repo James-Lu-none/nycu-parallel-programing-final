@@ -385,7 +385,7 @@ def plot_variation_detail(
     y_label: str,
     title_suffix: str,
     convert_to_ms: bool = False,
-    value_format: str = ".1f",
+    value_format: str = ".4f",
 ) -> None:
     """
     Create detailed plot for a specific variation showing thread count scaling.
@@ -495,19 +495,19 @@ def generate_all_plots(df: pd.DataFrame, results_dir: Path) -> None:
             "suffix": "Runtime",
             "y_label": "Mean Time (ms)",
             "convert_to_ms": True,
-            "value_format": ".1f",
+            "value_format": ".4f",
         },
         "speedup": {
             "suffix": "Speedup",
             "y_label": "Speedup (×)",
             "convert_to_ms": False,
-            "value_format": ".2f",
+            "value_format": ".4f",
         },
         "efficiency": {
             "suffix": "Efficiency",
             "y_label": "Efficiency",
             "convert_to_ms": False,
-            "value_format": ".2f",
+            "value_format": ".4f",
         },
     }
     
