@@ -207,6 +207,7 @@ void destroy_workers(vector<Planet> &b)
 
 void accelerations(vector<Planet> &b)
 {
+    ZoneScopedN("accelerations");
     int n = b.size();
     int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
