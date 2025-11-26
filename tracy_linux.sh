@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-SLEEP_TIME=10
+SLEEP_TIME=5
 TRACY_CAPTURE="./tracy-capture"
 TRACY_CSVEXPORT="./tracy-csvexport"
 BUILD_DIR="build"
@@ -87,9 +87,9 @@ run_benchmark() {
     find . -maxdepth 1 ! -name . -exec rm -rf {} +
     
     if [ "$type" == "ACCEL" ]; then
-        cmake -DACCEL_VARIANT="$variant" -DRENDER_VARIANT=serial ..
+        cmake -DACCEL_VARIANT="$variant" -DRENDER_VARIANT=cuda ..
     else
-        cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT="$variant" ..
+        cmake -DACCEL_VARIANT=cuda_interleaved -DRENDER_VARIANT="$variant" ..
     fi
     make -j$(nproc)
     cd ..
