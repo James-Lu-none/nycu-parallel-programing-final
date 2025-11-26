@@ -109,7 +109,7 @@ run_benchmark() {
         wait "$PID" 2>/dev/null || true
         
         sleep 2
-        "$TRACY_CSVEXPORT" "$TRACY_DIR/${prefix}_${variant}_${padded_i}.tracy" > "$OUTPUT_DIR/${prefix}_${variant}_${padded_i}.csv"
+        "$TRACY_CSVEXPORT" -u -p "$TRACY_DIR/${prefix}_${variant}_${padded_i}.tracy" > "$OUTPUT_DIR/${prefix}_${variant}_${padded_i}.csv"
     done
 }
 
