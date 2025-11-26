@@ -15,13 +15,13 @@ INPUT_FILE="random_1000.txt"
 
 # Arrays
 accs=(
-    # pthread_blocked
-    # pthread_interleaved
-    # pthread_mutex_blocked
-    # pthread_mutex_interleaved
-    # pthread_mutex_simd_blocked
-    # pthread_mutex_simd_interleaved
-    # pthread_simd_blocked
+    pthread_blocked
+    pthread_interleaved
+    pthread_mutex_blocked
+    pthread_mutex_interleaved
+    pthread_mutex_simd_blocked
+    pthread_mutex_simd_interleaved
+    pthread_simd_blocked
     pthread_simd_interleaved
     serial_simd
     serial
