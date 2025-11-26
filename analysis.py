@@ -167,7 +167,7 @@ def save_summary(df: pd.DataFrame, output_path: Path) -> None:
 
 def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -> None:
     """
-    Create overview plot for a single metric showing all variations.
+    Create overview plot for a single metric showing all variations as separate lines.
     
     Args:
         df: DataFrame with metrics data
@@ -188,19 +188,40 @@ def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -
     # Convert from ns to ms
     df_metric[f"{metric_col}_ms"] = pd.to_numeric(df_metric[metric_col], errors="coerce") / 1_000_000
     
-    fig, ax = plt.subplots(figsize=(20, 8))
+    # Add thread number for sorting
+    df_metric["thread_num"] = df_metric["thread_count"].apply(
+        lambda x: int(x) if x and x.isdigit() else 0
+    )
     
-    x = range(len(df_metric))
-    ax.plot(x, df_metric[f"{metric_col}_ms"], marker="o", linewidth=2, markersize=6)
+    # Get unique variations
+    variations = df_metric["variation"].unique()
+    
+    fig, ax = plt.subplots(figsize=(14, 8))
+    
+    # Plot each variation as a separate line
+    for variation in sorted(variations):
+        df_var = df_metric[df_metric["variation"] == variation].copy()
+        df_var = df_var.sort_values("thread_num")
+        
+        # Create x-axis values based on thread count
+        x_values = []
+        for _, row in df_var.iterrows():
+            if row["thread_count"]:
+                x_values.append(int(row["thread_count"]))
+            else:
+                x_values.append(0)
+        
+        label = variation.replace("_", " ").title()
+        ax.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
+                linewidth=2, markersize=6, label=label)
     
     # Configure plot
     metric_display = metric_name.replace("_", " ").title()
-    ax.set_xticks(x)
-    ax.set_xticklabels(df_metric["csv_file_name"], rotation=75, ha="right", fontsize=8)
     ax.set_ylabel("Mean Time (ms)", fontsize=12)
-    ax.set_xlabel("Configuration", fontsize=12)
+    ax.set_xlabel("Thread Count", fontsize=12)
     ax.set_title(f"{metric_display} - All Variations (Overview)", fontsize=14, fontweight="bold")
     ax.grid(True, linestyle="--", alpha=0.4)
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
     
     plt.tight_layout()
     
