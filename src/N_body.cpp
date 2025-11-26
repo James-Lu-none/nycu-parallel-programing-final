@@ -103,7 +103,8 @@ int main(int argc, char* argv[])
         TracyPlot("Average Frame Time (ms)", avg_frame_time * 1000.0);
 
         // prevent accumulator adds to much when frame_dt is too large, aka. frame rate is too low (lower then 20 FPS)
-        if (frame_dt > 0.05) frame_dt = 0.05;
+        // if (frame_dt > 0.05) frame_dt = 0.05;
+        frame_dt = 0.05;
         accumulator += frame_dt;
 
         {
