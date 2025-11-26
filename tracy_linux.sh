@@ -124,4 +124,4 @@ for render in "${renders[@]}"; do
 done
 
 echo "Running evaluation script..."
-python eval.py
+python analysis.py
