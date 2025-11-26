@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict
 
 
-TARGET_NAMES = {"PhysicsStep", "RenderStep"}
+TARGET_NAMES = {"PhysicsStep", "RenderStep", "accelerations"}
 
 
 def extract_target_means(csv_path: Path) -> Dict[str, str]:
