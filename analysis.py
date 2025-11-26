@@ -422,7 +422,7 @@ def print_summary_stats(df: pd.DataFrame) -> None:
 
 def main() -> None:
     """Main execution function."""
-    eval_dir = Path("eval")
+    eval_dir = Path("parsed_eval")
     results_dir = Path("results")
     results_dir.mkdir(exist_ok=True)
     
