@@ -1,8 +1,15 @@
+#!/usr/bin/env python3
+"""
+Unified script to extract metrics from Tracy CSV exports, generate summary,
+and create visualizations grouped by metric type and parallel variations.
+"""
+
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -19,9 +26,35 @@ METRICS_CONFIG = {
 # Configure which metrics to skip for files matching certain patterns
 # Key: filename prefix, Value: set of metric column names to skip (set to NaN)
 SKIP_RULES = {
-    "render": {"physicsstep_mean_ns"},
+    "render": {"physicsstep_mean_ns", "accelerations_mean_ns"},
     "accelerations": {"renderstep_mean_ns"},
 }
+
+# Parallel variation configurations
+ACCELERATION_VARIATIONS = [
+    "pthread_blocked",
+    "pthread_interleaved",
+    "pthread_mutex_blocked",
+    "pthread_mutex_interleaved",
+    "pthread_mutex_simd_blocked",
+    "pthread_mutex_simd_interleaved",
+    "pthread_simd_blocked",
+    "pthread_simd_interleaved",
+    "serial_simd",
+    "serial",
+    "cuda_blocked",
+    "cuda_interleaved",
+]
+
+RENDER_VARIATIONS = [
+    "serial",
+    "serial_simd",
+    "pthread",
+    "pthread_simd",
+    "pthread_mutex",
+    "pthread_mutex_simd",
+    "cuda",
+]
 
 
 def extract_metrics(csv_path: Path) -> Dict[str, str]:
@@ -59,6 +92,33 @@ def extract_metrics(csv_path: Path) -> Dict[str, str]:
     return found
 
 
+def parse_filename(filename: str) -> Tuple[str, str, str]:
+    """
+    Parse filename to extract type, variation, and thread count.
+    
+    Args:
+        filename: CSV filename (e.g., "accelerations_pthread_blocked_04.csv")
+        
+    Returns:
+        Tuple of (type, variation, thread_count)
+        e.g., ("accelerations", "pthread_blocked", "04")
+    """
+    # Remove .csv extension
+    name = filename.replace(".csv", "")
+    
+    # Match pattern: type_variation_threadcount
+    # Thread count is optional (2 digits at the end)
+    match = re.match(r"(accelerations|render)_(.+?)(?:_(\d{2}))?$", name)
+    
+    if match:
+        file_type = match.group(1)
+        variation = match.group(2)
+        thread_count = match.group(3) if match.group(3) else None
+        return file_type, variation, thread_count
+    
+    return "", "", ""
+
+
 def generate_summary(eval_dir: Path) -> pd.DataFrame:
     """
     Process all CSV files in eval directory and create summary DataFrame.
@@ -75,7 +135,14 @@ def generate_summary(eval_dir: Path) -> pd.DataFrame:
     rows = []
     for csv_file in csv_files:
         metrics = extract_metrics(csv_file)
-        row = {"csv_file_name": csv_file.name}
+        file_type, variation, thread_count = parse_filename(csv_file.name)
+        
+        row = {
+            "csv_file_name": csv_file.name,
+            "type": file_type,
+            "variation": variation,
+            "thread_count": thread_count
+        }
         row.update(metrics)
         rows.append(row)
     
@@ -98,89 +165,206 @@ def save_summary(df: pd.DataFrame, output_path: Path) -> None:
     print(f"Processed {len(df)} CSV files")
 
 
-def load_summary(summary_path: Path | None = None) -> pd.DataFrame:
+def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -> None:
     """
-    Load summary CSV, trying multiple locations if path not specified.
-    
-    Args:
-        summary_path: Optional explicit path to summary.csv
-        
-    Returns:
-        DataFrame with summary data
-    """
-    if summary_path is None:
-        # Try current directory first, then eval/
-        if Path("summary.csv").exists():
-            summary_path = Path("summary.csv")
-        elif Path("eval/summary.csv").exists():
-            summary_path = Path("eval/summary.csv")
-        else:
-            raise FileNotFoundError(
-                "summary.csv not found in current directory or eval/"
-            )
-    
-    return pd.read_csv(summary_path)
-
-
-def plot_metrics(df: pd.DataFrame, output_path: Path) -> None:
-    """
-    Create line plot visualization of all metrics.
+    Create overview plot for a single metric showing all variations.
     
     Args:
         df: DataFrame with metrics data
-        output_path: Path to save plot image
+        metric_col: Name of the metric column
+        results_dir: Directory to save plot image
     """
-    # Convert nanoseconds to milliseconds for all metric columns
-    metric_cols = [col for col in df.columns if col != "csv_file_name"]
-    df_plot = df.copy()
+    # Filter out rows where this metric is NaN
+    df_metric = df[df[metric_col].notna()].copy()
     
-    for col in metric_cols:
-        df_plot[col] = pd.to_numeric(df_plot[col], errors="coerce") / 1_000_000
+    if len(df_metric) == 0:
+        return
     
-    # Create plot
-    fig, ax = plt.subplots(figsize=(14, 8))
+    # Create subdirectory for this metric
+    metric_name = metric_col.replace("_mean_ns", "")
+    metric_dir = results_dir / metric_name
+    metric_dir.mkdir(exist_ok=True)
     
-    x = range(len(df_plot))
-    for col in metric_cols:
-        # Create readable label from column name
-        label = col.replace("_mean_ns", "").replace("_", " ").title()
-        ax.plot(x, df_plot[col], marker="o", label=label)
+    # Convert from ns to ms
+    df_metric[f"{metric_col}_ms"] = pd.to_numeric(df_metric[metric_col], errors="coerce") / 1_000_000
+    
+    fig, ax = plt.subplots(figsize=(20, 8))
+    
+    x = range(len(df_metric))
+    ax.plot(x, df_metric[f"{metric_col}_ms"], marker="o", linewidth=2, markersize=6)
     
     # Configure plot
+    metric_display = metric_name.replace("_", " ").title()
     ax.set_xticks(x)
-    ax.set_xticklabels(df_plot["csv_file_name"], rotation=75, ha="right")
-    ax.set_ylabel("Mean Time (ms)")
-    ax.set_xlabel("CSV File")
-    ax.set_title("Tracy Performance Metrics")
+    ax.set_xticklabels(df_metric["csv_file_name"], rotation=75, ha="right", fontsize=8)
+    ax.set_ylabel("Mean Time (ms)", fontsize=12)
+    ax.set_xlabel("Configuration", fontsize=12)
+    ax.set_title(f"{metric_display} - All Variations (Overview)", fontsize=14, fontweight="bold")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend()
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150)
-    print(f"Plot saved to {output_path}")
-    plt.show()
+    
+    # Save plot
+    output_filename = f"{metric_name}_overview.png"
+    output_path = metric_dir / output_filename
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
+
+
+def plot_variation_detail(df: pd.DataFrame, file_type: str, variation: str, 
+                          metric_col: str, results_dir: Path) -> None:
+    """
+    Create detailed plot for a specific variation showing thread count scaling.
+    
+    Args:
+        df: DataFrame with metrics data
+        file_type: Type of files (accelerations or render)
+        variation: Specific variation (e.g., pthread_blocked)
+        metric_col: Name of the metric column
+        results_dir: Directory to save plot image
+    """
+    # Filter for this specific variation
+    df_var = df[(df["type"] == file_type) & 
+                (df["variation"] == variation) & 
+                (df[metric_col].notna())].copy()
+    
+    if len(df_var) == 0:
+        return
+    
+    # Create subdirectory for this metric
+    metric_name = metric_col.replace("_mean_ns", "")
+    metric_dir = results_dir / metric_name
+    metric_dir.mkdir(exist_ok=True)
+    
+    # Convert from ns to ms
+    df_var[f"{metric_col}_ms"] = pd.to_numeric(df_var[metric_col], errors="coerce") / 1_000_000
+    
+    # Sort by thread count for proper ordering
+    df_var["thread_num"] = df_var["thread_count"].apply(
+        lambda x: int(x) if x and x.isdigit() else 0
+    )
+    df_var = df_var.sort_values("thread_num")
+    
+    fig, ax = plt.subplots(figsize=(12, 7))
+    
+    x = range(len(df_var))
+    ax.plot(x, df_var[f"{metric_col}_ms"], marker="o", linewidth=2, markersize=8, 
+            color="tab:blue")
+    
+    # Configure plot
+    metric_display = metric_name.replace("_", " ").title()
+    variation_display = variation.replace("_", " ").title()
+    
+    # Create x-axis labels with thread counts
+    labels = []
+    for _, row in df_var.iterrows():
+        if row["thread_count"]:
+            labels.append(f"{row['thread_count']} threads")
+        else:
+            labels.append(row["csv_file_name"])
+    
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=10)
+    ax.set_ylabel("Mean Time (ms)", fontsize=12)
+    ax.set_xlabel("Thread Count", fontsize=12)
+    ax.set_title(f"{metric_display} - {variation_display}", fontsize=14, fontweight="bold")
+    ax.grid(True, linestyle="--", alpha=0.4)
+    
+    # Add value labels on points
+    for i, (_, row) in enumerate(df_var.iterrows()):
+        ax.annotate(f'{row[f"{metric_col}_ms"]:.1f}', 
+                   xy=(i, row[f"{metric_col}_ms"]),
+                   xytext=(0, 10), textcoords='offset points',
+                   ha='center', fontsize=8, alpha=0.7)
+    
+    plt.tight_layout()
+    
+    # Save plot
+    output_filename = f"{file_type}_{variation}.png"
+    output_path = metric_dir / output_filename
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
+
+
+def generate_all_plots(df: pd.DataFrame, results_dir: Path) -> None:
+    """
+    Generate all plots: overviews and detailed variation plots.
+    
+    Args:
+        df: DataFrame with metrics data
+        results_dir: Directory to save plot images
+    """
+    metric_cols = [col for col in df.columns 
+                   if col.endswith("_mean_ns") and col in METRICS_CONFIG]
+    
+    # 1. Generate overview plots for each metric
+    print("\n=== Generating Metric Overview Plots ===")
+    for metric_col in metric_cols:
+        plot_metric_overview(df, metric_col, results_dir)
+    
+    # 2. Generate detailed plots for acceleration variations
+    print("\n=== Generating Acceleration Variation Plots ===")
+    df_acc = df[df["type"] == "accelerations"]
+    acc_variations = df_acc["variation"].unique()
+    
+    for variation in sorted(acc_variations):
+        # Plot both PhysicsStep and Accelerations for each variation
+        for metric_col in ["physicsstep_mean_ns", "accelerations_mean_ns"]:
+            if metric_col in df.columns:
+                plot_variation_detail(df, "accelerations", variation, 
+                                    metric_col, results_dir)
+    
+    # 3. Generate detailed plots for render variations
+    print("\n=== Generating Render Variation Plots ===")
+    df_render = df[df["type"] == "render"]
+    render_variations = df_render["variation"].unique()
+    
+    for variation in sorted(render_variations):
+        if "renderstep_mean_ns" in df.columns:
+            plot_variation_detail(df, "render", variation, 
+                                "renderstep_mean_ns", results_dir)
+
+
+def print_summary_stats(df: pd.DataFrame) -> None:
+    """Print summary statistics about the dataset."""
+    print("\n=== Dataset Summary ===")
+    print(f"Total files: {len(df)}")
+    
+    df_acc = df[df["type"] == "accelerations"]
+    df_render = df[df["type"] == "render"]
+    
+    print(f"\nAcceleration files: {len(df_acc)}")
+    print(f"  Unique variations: {df_acc['variation'].nunique()}")
+    print(f"  Variations: {', '.join(sorted(df_acc['variation'].unique()))}")
+    
+    print(f"\nRender files: {len(df_render)}")
+    print(f"  Unique variations: {df_render['variation'].nunique()}")
+    print(f"  Variations: {', '.join(sorted(df_render['variation'].unique()))}")
 
 
 def main() -> None:
     """Main execution function."""
     eval_dir = Path("eval")
+    results_dir = Path("results")
+    results_dir.mkdir(exist_ok=True)
     
     # Generate summary
     print("Extracting metrics from CSV files...")
     df = generate_summary(eval_dir)
     
     # Save summary
-    summary_path = eval_dir / "summary.csv"
+    summary_path = results_dir / "summary.csv"
     save_summary(df, summary_path)
     
-    # Print summary statistics
-    print("\nSummary Statistics:")
-    print(df.to_string(index=False))
+    # Print statistics
+    print_summary_stats(df)
     
-    # Generate plot
-    print("\nGenerating visualization...")
-    plot_path = Path("plot.png")
-    plot_metrics(df, plot_path)
+    # Generate all visualizations
+    generate_all_plots(df, results_dir)
+    
+    print(f"\n✓ All results saved to {results_dir}/")
 
 
 if __name__ == "__main__":

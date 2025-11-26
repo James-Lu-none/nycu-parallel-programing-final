@@ -7,3 +7,4 @@ tracy
 eval
 .env
 *.png
+**/*.csv
