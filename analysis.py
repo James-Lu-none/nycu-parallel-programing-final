@@ -595,8 +595,8 @@ def print_summary_stats(df: pd.DataFrame) -> None:
 
 def main() -> None:
     """Main execution function."""
-    eval_dir = Path("parsed_eval")
-    results_dir = Path("results")
+    eval_dir = Path("./results/parsed_eval")
+    results_dir = Path("./results/plots")
     results_dir.mkdir(exist_ok=True)
     
     # Generate summary

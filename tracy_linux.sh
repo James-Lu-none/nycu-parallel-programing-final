@@ -6,8 +6,10 @@ SLEEP_TIME=10
 TRACY_CAPTURE="./tracy-capture"
 TRACY_CSVEXPORT="./tracy-csvexport"
 BUILD_DIR="build"
-OUTPUT_DIR="eval"
-TRACY_DIR="tracy"
+OUTPUT_BASE_DIR="./results"
+OUTPUT_DIR="$OUTPUT_BASE_DIR/eval"
+TRACY_DIR="$OUTPUT_BASE_DIR/tracy"
+PARSED_EVAL_DIR="$OUTPUT_BASE_DIR/parsed_eval"
 ASSETS_DIR="./assets"
 INPUT_FILE="random_1000.txt"
 
@@ -41,10 +43,19 @@ renders=(
 
 rm -r "$TRACY_DIR" || true
 rm -r "$OUTPUT_DIR" || true
+rm -r "$PARSED_EVAL_DIR" || true
 
+mkdir -p "$OUTPUT_BASE_DIR"
 mkdir -p "$TRACY_DIR"
 mkdir -p "$OUTPUT_DIR"
+mkdir -p "$PARSED_EVAL_DIR"
 mkdir -p "$BUILD_DIR"
+
+# record current git commit hash and branch
+{
+    echo "Git Branch: $(git rev-parse --abbrev-ref HEAD)"
+    echo "Git Commit: $(git rev-parse HEAD)"
+} >> "$OUTPUT_BASE_DIR/git_info.txt"
 
 # Cleanup function to kill background processes on exit
 cleanup() {
@@ -83,7 +94,7 @@ run_benchmark() {
     make -j$(nproc)
     cd ..
 
-    local threads="2 4 6 8 10"
+    local threads="2 3 4 5 6 7 8 9 10"
     if  [[ "$variant" =~ cuda || "$variant" =~ serial ]]; then
         local threads="1"
     fi
@@ -124,5 +135,5 @@ for render in "${renders[@]}"; do
 done
 
 echo "Running evaluation script..."
-python parse_eval.py eval parsed_eval
+python parse_eval.py "$OUTPUT_DIR" "$PARSED_EVAL_DIR"
 python analysis.py
