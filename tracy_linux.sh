@@ -94,7 +94,7 @@ run_benchmark() {
     make -j$(nproc)
     cd ..
 
-    local threads="2 4 6 8 10"
+    local threads="1 2 3 4 5 6"
     if  [[ "$variant" =~ cuda || "$variant" =~ serial ]]; then
         local threads="1"
     fi
