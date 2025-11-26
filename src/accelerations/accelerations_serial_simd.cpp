@@ -5,9 +5,9 @@
 #include <immintrin.h>  // AVX
 #include <cstddef>      // offsetof
 
-void accelerations(vector<Planet>& b)
+void accelerations(vector<Planet> &b)
 {
-    ZoneScopedN("accelerations_f32");
+    ZoneScopedN("accelerations");
     int n = b.size();
 
     // 1. clear acc

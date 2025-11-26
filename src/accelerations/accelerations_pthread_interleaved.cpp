@@ -44,7 +44,7 @@ static void *accelerations_thread(void *arg)
 
 void accelerations(vector<Planet> &b)
 {
-    ZoneScopedN("accelerations_parallel");
+    ZoneScopedN("accelerations");
 
     int n = b.size();
     int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;

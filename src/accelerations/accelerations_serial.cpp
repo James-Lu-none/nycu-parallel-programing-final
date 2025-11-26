@@ -5,8 +5,8 @@
 
 void accelerations(vector<Planet> &b)
 {
-    int n = b.size();
     ZoneScopedN("accelerations");
+    int n = b.size();
     for (int i = 0; i < n; ++i)
         b[i].acc = vec3(0.0, 0.0, 0.0);
 
