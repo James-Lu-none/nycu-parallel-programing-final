@@ -90,7 +90,7 @@ void *render_thread(void *arg) {
     return NULL;
 }
 
-void init_workers(PlanetsSoA &bodies) {
+void init_render_workers() {
     int t_N = config::NUM_THREADS;
     workers = (Worker *)calloc(t_N, sizeof(Worker));
     for (int i = 0; i < t_N; i++) {
@@ -104,7 +104,7 @@ void init_workers(PlanetsSoA &bodies) {
     }
 }
 
-void destroy_workers(PlanetsSoA &bodies) {
+void destroy_render_workers() {
     int t_N = config::NUM_THREADS;
     for (int i = 0; i < t_N; i++) {
         pthread_mutex_lock(&workers[i].mutex);
