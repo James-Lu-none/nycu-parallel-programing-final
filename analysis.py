@@ -57,6 +57,26 @@ RENDER_VARIATIONS = [
 ]
 
 
+def metric_base_name(metric_col: str) -> str:
+    """Strip common suffixes to get the logical metric base name."""
+    for suffix in ("_mean_ns", "_speedup", "_efficiency"):
+        if metric_col.endswith(suffix):
+            return metric_col[: -len(suffix)]
+    return metric_col
+
+
+def is_simd_variation(variation: str | None) -> bool:
+    """Return True if the variation name denotes SIMD usage."""
+    return bool(isinstance(variation, str) and "simd" in variation.lower())
+
+
+def thread_count_to_int(thread_count: str | None) -> int:
+    """Convert a thread count string to int, defaulting to 1 for serial runs."""
+    if isinstance(thread_count, str) and thread_count.isdigit():
+        return int(thread_count)
+    return 1
+
+
 def extract_metrics(csv_path: Path) -> Dict[str, str]:
     """
     Extract configured metrics from a Tracy CSV export.
@@ -158,6 +178,64 @@ def generate_summary(eval_dir: Path) -> pd.DataFrame:
     return df
 
 
+def add_speedup_and_efficiency(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add speedup and efficiency columns for each runtime metric.
+    
+    Speedup is computed against a serial baseline of the same type.
+    SIMD variations prefer the serial_simd baseline when available.
+    """
+    df = df.copy()
+    runtime_cols = [col for col in df.columns 
+                    if col.endswith("_mean_ns") and col in METRICS_CONFIG]
+    
+    for runtime_col in runtime_cols:
+        speedup_col = runtime_col.replace("_mean_ns", "_speedup")
+        efficiency_col = runtime_col.replace("_mean_ns", "_efficiency")
+        df[speedup_col] = pd.NA
+        df[efficiency_col] = pd.NA
+        
+        for file_type in df["type"].dropna().unique():
+            df_type = df[df["type"] == file_type]
+            
+            # Determine baselines for SIMD and non-SIMD variations
+            baselines = {}
+            for simd_flag in (False, True):
+                base_variation = "serial_simd" if simd_flag else "serial"
+                baseline_rows = df_type[
+                    (df_type["variation"] == base_variation) & 
+                    (df_type[runtime_col].notna())
+                ]
+                if not baseline_rows.empty:
+                    baseline_val = pd.to_numeric(
+                        baseline_rows.iloc[0][runtime_col], errors="coerce"
+                    )
+                    if pd.notna(baseline_val):
+                        baselines[simd_flag] = baseline_val
+            
+            # Prefer matching SIMD baseline, otherwise fall back to any available baseline
+            default_baseline = baselines.get(False) or baselines.get(True)
+            
+            for idx, row in df_type[df_type[runtime_col].notna()].iterrows():
+                runtime_ns = pd.to_numeric(row[runtime_col], errors="coerce")
+                if pd.isna(runtime_ns) or runtime_ns <= 0:
+                    continue
+                
+                simd_flag = is_simd_variation(row["variation"])
+                baseline = baselines.get(simd_flag, default_baseline)
+                if baseline is None or baseline <= 0:
+                    continue
+                
+                speedup = baseline / runtime_ns
+                threads = thread_count_to_int(row["thread_count"])
+                efficiency = speedup / threads if threads > 0 else pd.NA
+                
+                df.at[idx, speedup_col] = speedup
+                df.at[idx, efficiency_col] = efficiency
+    
+    return df
+
+
 def save_summary(df: pd.DataFrame, output_path: Path) -> None:
     """Save summary DataFrame to CSV file."""
     df.to_csv(output_path, index=False)
@@ -165,7 +243,14 @@ def save_summary(df: pd.DataFrame, output_path: Path) -> None:
     print(f"Processed {len(df)} CSV files")
 
 
-def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -> None:
+def plot_metric_overview(
+    df: pd.DataFrame,
+    metric_col: str,
+    results_dir: Path,
+    y_label: str,
+    title_suffix: str,
+    convert_to_ms: bool = False,
+) -> None:
     """
     Create overview plots for a single metric:
     1. All variations grouped by SIMD/non-SIMD (excluding CUDA)
@@ -175,58 +260,52 @@ def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -
         df: DataFrame with metrics data
         metric_col: Name of the metric column
         results_dir: Directory to save plot image
+        y_label: Label for the Y-axis
+        title_suffix: Text to append after the metric name in plot titles
+        convert_to_ms: If True, convert values from ns to ms
     """
-    # Filter out rows where this metric is NaN
     df_metric = df[df[metric_col].notna()].copy()
     
     if len(df_metric) == 0:
         return
     
-    # Create subdirectory for this metric
-    metric_name = metric_col.replace("_mean_ns", "")
+    metric_name = metric_base_name(metric_col)
     metric_dir = results_dir / metric_name
-    metric_dir.mkdir(exist_ok=True)
+    metric_dir.mkdir(parents=True, exist_ok=True)
     
-    # Convert from ns to ms
-    df_metric[f"{metric_col}_ms"] = pd.to_numeric(df_metric[metric_col], errors="coerce") / 1_000_000
+    df_metric["plot_value"] = pd.to_numeric(df_metric[metric_col], errors="coerce")
+    if convert_to_ms:
+        df_metric["plot_value"] = df_metric["plot_value"] / 1_000_000
     
-    # Add thread number for sorting
-    df_metric["thread_num"] = df_metric["thread_count"].apply(
-        lambda x: int(x) if x and x.isdigit() else 0
-    )
+    df_metric["thread_num"] = df_metric["thread_count"].apply(thread_count_to_int)
+    df_metric["is_simd"] = df_metric["variation"].apply(is_simd_variation)
+    df_metric["is_cuda"] = df_metric["variation"].str.contains("cuda", case=False, na=False)
     
-    # Classify variations as SIMD or non-SIMD
-    df_metric["is_simd"] = df_metric["variation"].str.contains("simd", case=False)
-    df_metric["is_cuda"] = df_metric["variation"].str.contains("cuda", case=False)
-    
-    # Get unique variations
     variations = df_metric["variation"].unique()
-    
-    # Plot 1: All variations (one line per variation)
     fig, ax = plt.subplots(figsize=(14, 8))
     
     for variation in sorted(variations):
         df_var = df_metric[df_metric["variation"] == variation].copy()
         df_var = df_var.sort_values("thread_num")
         
-        # Create x-axis values based on thread count
-        x_values = []
-        for _, row in df_var.iterrows():
-            if row["thread_count"]:
-                x_values.append(int(row["thread_count"]))
-            else:
-                x_values.append(0)
-        
+        x_values = [thread_count_to_int(row["thread_count"]) for _, row in df_var.iterrows()]
         label = variation.replace("_", " ").title()
-        ax.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
-                linewidth=2, markersize=6, label=label)
+        ax.plot(
+            x_values,
+            df_var["plot_value"],
+            marker="o",
+            linewidth=2,
+            markersize=6,
+            label=label,
+        )
     
     metric_display = metric_name.replace("_", " ").title()
-    ax.set_ylabel("Mean Time (ms)", fontsize=12)
+    suffix_text = f" {title_suffix}" if title_suffix else ""
+    ax.set_ylabel(y_label, fontsize=12)
     ax.set_xlabel("Thread Count", fontsize=12)
-    ax.set_title(f"{metric_display} - All Variations", fontsize=14, fontweight="bold")
+    ax.set_title(f"{metric_display}{suffix_text} - All Variations", fontsize=14, fontweight="bold")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=9)
     
     plt.tight_layout()
     output_path = metric_dir / f"{metric_name}_overview_all.png"
@@ -234,52 +313,61 @@ def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -
     print(f"  Saved: {output_path}")
     plt.close()
     
-    # Plot 2: SIMD vs non-SIMD (excluding CUDA)
     df_no_cuda = df_metric[~df_metric["is_cuda"]].copy()
     
     if len(df_no_cuda) > 0:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
         
-        # Non-SIMD variations
         df_non_simd = df_no_cuda[~df_no_cuda["is_simd"]]
         for variation in sorted(df_non_simd["variation"].unique()):
             df_var = df_non_simd[df_non_simd["variation"] == variation].copy()
             df_var = df_var.sort_values("thread_num")
             
-            x_values = [int(row["thread_count"]) if row["thread_count"] else 0 
-                       for _, row in df_var.iterrows()]
-            
+            x_values = [thread_count_to_int(row["thread_count"]) for _, row in df_var.iterrows()]
             label = variation.replace("_", " ").title()
-            ax1.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
-                    linewidth=2, markersize=6, label=label)
+            ax1.plot(
+                x_values,
+                df_var["plot_value"],
+                marker="o",
+                linewidth=2,
+                markersize=6,
+                label=label,
+            )
         
-        ax1.set_ylabel("Mean Time (ms)", fontsize=12)
+        ax1.set_ylabel(y_label, fontsize=12)
         ax1.set_xlabel("Thread Count", fontsize=12)
-        ax1.set_title(f"Non-SIMD Variations", fontsize=12, fontweight="bold")
+        ax1.set_title("Non-SIMD Variations", fontsize=12, fontweight="bold")
         ax1.grid(True, linestyle="--", alpha=0.4)
         ax1.legend(fontsize=9)
         
-        # SIMD variations
         df_simd = df_no_cuda[df_no_cuda["is_simd"]]
         for variation in sorted(df_simd["variation"].unique()):
             df_var = df_simd[df_simd["variation"] == variation].copy()
             df_var = df_var.sort_values("thread_num")
             
-            x_values = [int(row["thread_count"]) if row["thread_count"] else 0 
-                       for _, row in df_var.iterrows()]
-            
+            x_values = [thread_count_to_int(row["thread_count"]) for _, row in df_var.iterrows()]
             label = variation.replace("_", " ").title()
-            ax2.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
-                    linewidth=2, markersize=6, label=label)
+            ax2.plot(
+                x_values,
+                df_var["plot_value"],
+                marker="o",
+                linewidth=2,
+                markersize=6,
+                label=label,
+            )
         
-        ax2.set_ylabel("Mean Time (ms)", fontsize=12)
+        ax2.set_ylabel(y_label, fontsize=12)
         ax2.set_xlabel("Thread Count", fontsize=12)
-        ax2.set_title(f"SIMD Variations", fontsize=12, fontweight="bold")
+        ax2.set_title("SIMD Variations", fontsize=12, fontweight="bold")
         ax2.grid(True, linestyle="--", alpha=0.4)
         ax2.legend(fontsize=9)
         
-        fig.suptitle(f"{metric_display} - SIMD vs Non-SIMD Comparison (Excluding CUDA)", 
-                    fontsize=14, fontweight="bold", y=1.00)
+        fig.suptitle(
+            f"{metric_display}{suffix_text} - SIMD vs Non-SIMD Comparison (Excluding CUDA)",
+            fontsize=14,
+            fontweight="bold",
+            y=1.00,
+        )
         plt.tight_layout()
         
         output_path = metric_dir / f"{metric_name}_overview_simd_comparison.png"
@@ -288,8 +376,17 @@ def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -
         plt.close()
 
 
-def plot_variation_detail(df: pd.DataFrame, file_type: str, variation: str, 
-                          metric_col: str, results_dir: Path) -> None:
+def plot_variation_detail(
+    df: pd.DataFrame,
+    file_type: str,
+    variation: str,
+    metric_col: str,
+    results_dir: Path,
+    y_label: str,
+    title_suffix: str,
+    convert_to_ms: bool = False,
+    value_format: str = ".1f",
+) -> None:
     """
     Create detailed plot for a specific variation showing thread count scaling.
     
@@ -299,40 +396,47 @@ def plot_variation_detail(df: pd.DataFrame, file_type: str, variation: str,
         variation: Specific variation (e.g., pthread_blocked)
         metric_col: Name of the metric column
         results_dir: Directory to save plot image
+        y_label: Label for the Y-axis
+        title_suffix: Text to append after the metric name in plot titles
+        convert_to_ms: If True, convert values from ns to ms
+        value_format: Format string for value annotations
     """
-    # Filter for this specific variation
-    df_var = df[(df["type"] == file_type) & 
-                (df["variation"] == variation) & 
-                (df[metric_col].notna())].copy()
+    df_var = df[
+        (df["type"] == file_type)
+        & (df["variation"] == variation)
+        & (df[metric_col].notna())
+    ].copy()
     
     if len(df_var) == 0:
         return
     
-    # Create subdirectory for this metric
-    metric_name = metric_col.replace("_mean_ns", "")
+    metric_name = metric_base_name(metric_col)
     metric_dir = results_dir / metric_name
-    metric_dir.mkdir(exist_ok=True)
+    metric_dir.mkdir(parents=True, exist_ok=True)
     
-    # Convert from ns to ms
-    df_var[f"{metric_col}_ms"] = pd.to_numeric(df_var[metric_col], errors="coerce") / 1_000_000
+    df_var["plot_value"] = pd.to_numeric(df_var[metric_col], errors="coerce")
+    if convert_to_ms:
+        df_var["plot_value"] = df_var["plot_value"] / 1_000_000
     
-    # Sort by thread count for proper ordering
-    df_var["thread_num"] = df_var["thread_count"].apply(
-        lambda x: int(x) if x and x.isdigit() else 0
-    )
+    df_var["thread_num"] = df_var["thread_count"].apply(thread_count_to_int)
     df_var = df_var.sort_values("thread_num")
     
     fig, ax = plt.subplots(figsize=(12, 7))
     
     x = range(len(df_var))
-    ax.plot(x, df_var[f"{metric_col}_ms"], marker="o", linewidth=2, markersize=8, 
-            color="tab:blue")
+    ax.plot(
+        x,
+        df_var["plot_value"],
+        marker="o",
+        linewidth=2,
+        markersize=8,
+        color="tab:blue",
+    )
     
-    # Configure plot
     metric_display = metric_name.replace("_", " ").title()
     variation_display = variation.replace("_", " ").title()
+    suffix_text = f" {title_suffix}" if title_suffix else ""
     
-    # Create x-axis labels with thread counts
     labels = []
     for _, row in df_var.iterrows():
         if row["thread_count"]:
@@ -342,21 +446,25 @@ def plot_variation_detail(df: pd.DataFrame, file_type: str, variation: str,
     
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=10)
-    ax.set_ylabel("Mean Time (ms)", fontsize=12)
+    ax.set_ylabel(y_label, fontsize=12)
     ax.set_xlabel("Thread Count", fontsize=12)
-    ax.set_title(f"{metric_display} - {variation_display}", fontsize=14, fontweight="bold")
+    ax.set_title(f"{metric_display}{suffix_text} - {variation_display}", fontsize=14, fontweight="bold")
     ax.grid(True, linestyle="--", alpha=0.4)
     
-    # Add value labels on points
     for i, (_, row) in enumerate(df_var.iterrows()):
-        ax.annotate(f'{row[f"{metric_col}_ms"]:.1f}', 
-                   xy=(i, row[f"{metric_col}_ms"]),
-                   xytext=(0, 10), textcoords='offset points',
-                   ha='center', fontsize=8, alpha=0.7)
+        value_text = f"{row['plot_value']:{value_format}}"
+        ax.annotate(
+            value_text,
+            xy=(i, row["plot_value"]),
+            xytext=(0, 10),
+            textcoords="offset points",
+            ha="center",
+            fontsize=8,
+            alpha=0.7,
+        )
     
     plt.tight_layout()
     
-    # Save plot
     output_filename = f"{file_type}_{variation}.png"
     output_path = metric_dir / output_filename
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
@@ -364,43 +472,108 @@ def plot_variation_detail(df: pd.DataFrame, file_type: str, variation: str,
     plt.close()
 
 
+def metric_column_for_mode(metric_base: str, mode: str) -> str:
+    """Return the column name for a metric base under the selected plotting mode."""
+    suffix_map = {
+        "runtime": "_mean_ns",
+        "speedup": "_speedup",
+        "efficiency": "_efficiency",
+    }
+    return f"{metric_base}{suffix_map[mode]}"
+
+
 def generate_all_plots(df: pd.DataFrame, results_dir: Path) -> None:
     """
-    Generate all plots: overviews and detailed variation plots.
+    Generate runtime, speedup, and efficiency plots.
     
     Args:
         df: DataFrame with metrics data
         results_dir: Directory to save plot images
     """
-    metric_cols = [col for col in df.columns 
-                   if col.endswith("_mean_ns") and col in METRICS_CONFIG]
+    plot_modes = {
+        "runtime": {
+            "suffix": "Runtime",
+            "y_label": "Mean Time (ms)",
+            "convert_to_ms": True,
+            "value_format": ".1f",
+        },
+        "speedup": {
+            "suffix": "Speedup",
+            "y_label": "Speedup (×)",
+            "convert_to_ms": False,
+            "value_format": ".2f",
+        },
+        "efficiency": {
+            "suffix": "Efficiency",
+            "y_label": "Efficiency",
+            "convert_to_ms": False,
+            "value_format": ".2f",
+        },
+    }
     
-    # 1. Generate overview plots for each metric
-    print("\n=== Generating Metric Overview Plots ===")
-    for metric_col in metric_cols:
-        plot_metric_overview(df, metric_col, results_dir)
+    metric_bases = sorted({metric_base_name(col) for col in METRICS_CONFIG})
+    type_metric_bases = {
+        "accelerations": ["physicsstep", "accelerations"],
+        "render": ["renderstep"],
+    }
     
-    # 2. Generate detailed plots for acceleration variations
-    print("\n=== Generating Acceleration Variation Plots ===")
-    df_acc = df[df["type"] == "accelerations"]
-    acc_variations = df_acc["variation"].unique()
-    
-    for variation in sorted(acc_variations):
-        # Plot both PhysicsStep and Accelerations for each variation
-        for metric_col in ["physicsstep_mean_ns", "accelerations_mean_ns"]:
+    for mode, config in plot_modes.items():
+        mode_dir = results_dir / mode
+        mode_dir.mkdir(exist_ok=True)
+        
+        metric_cols = [
+            metric_column_for_mode(base, mode)
+            for base in metric_bases
+            if metric_column_for_mode(base, mode) in df.columns
+        ]
+        
+        print(f"\n=== Generating {config['suffix']} Overview Plots ===")
+        for metric_col in metric_cols:
+            plot_metric_overview(
+                df,
+                metric_col,
+                mode_dir,
+                y_label=config["y_label"],
+                title_suffix=config["suffix"],
+                convert_to_ms=config["convert_to_ms"],
+            )
+        
+        print(f"\n=== Generating {config['suffix']} Acceleration Variation Plots ===")
+        df_acc = df[df["type"] == "accelerations"]
+        acc_variations = df_acc["variation"].dropna().unique()
+        for variation in sorted(acc_variations):
+            for metric_base in type_metric_bases["accelerations"]:
+                metric_col = metric_column_for_mode(metric_base, mode)
+                if metric_col in df.columns:
+                    plot_variation_detail(
+                        df,
+                        "accelerations",
+                        variation,
+                        metric_col,
+                        mode_dir,
+                        y_label=config["y_label"],
+                        title_suffix=config["suffix"],
+                        convert_to_ms=config["convert_to_ms"],
+                        value_format=config["value_format"],
+                    )
+        
+        print(f"\n=== Generating {config['suffix']} Render Variation Plots ===")
+        df_render = df[df["type"] == "render"]
+        render_variations = df_render["variation"].dropna().unique()
+        for variation in sorted(render_variations):
+            metric_col = metric_column_for_mode("renderstep", mode)
             if metric_col in df.columns:
-                plot_variation_detail(df, "accelerations", variation, 
-                                    metric_col, results_dir)
-    
-    # 3. Generate detailed plots for render variations
-    print("\n=== Generating Render Variation Plots ===")
-    df_render = df[df["type"] == "render"]
-    render_variations = df_render["variation"].unique()
-    
-    for variation in sorted(render_variations):
-        if "renderstep_mean_ns" in df.columns:
-            plot_variation_detail(df, "render", variation, 
-                                "renderstep_mean_ns", results_dir)
+                plot_variation_detail(
+                    df,
+                    "render",
+                    variation,
+                    metric_col,
+                    mode_dir,
+                    y_label=config["y_label"],
+                    title_suffix=config["suffix"],
+                    convert_to_ms=config["convert_to_ms"],
+                    value_format=config["value_format"],
+                )
 
 
 def print_summary_stats(df: pd.DataFrame) -> None:
@@ -429,6 +602,7 @@ def main() -> None:
     # Generate summary
     print("Extracting metrics from CSV files...")
     df = generate_summary(eval_dir)
+    df = add_speedup_and_efficiency(df)
     
     # Save summary
     summary_path = results_dir / "summary.csv"
