@@ -142,6 +142,7 @@ void destroy_workers(PlanetsSoA &b)
 
 void accelerations(PlanetsSoA &b)
 {
+    ZoneScopedN("accelerations");
     int n = b.count;
     int t_N = config::NUM_THREADS > n ? n : config::NUM_THREADS;
 
