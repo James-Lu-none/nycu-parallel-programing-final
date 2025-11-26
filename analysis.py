@@ -167,7 +167,9 @@ def save_summary(df: pd.DataFrame, output_path: Path) -> None:
 
 def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -> None:
     """
-    Create overview plot for a single metric showing all variations as separate lines.
+    Create overview plots for a single metric:
+    1. All variations grouped by SIMD/non-SIMD (excluding CUDA)
+    2. All variations as separate lines
     
     Args:
         df: DataFrame with metrics data
@@ -193,12 +195,16 @@ def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -
         lambda x: int(x) if x and x.isdigit() else 0
     )
     
+    # Classify variations as SIMD or non-SIMD
+    df_metric["is_simd"] = df_metric["variation"].str.contains("simd", case=False)
+    df_metric["is_cuda"] = df_metric["variation"].str.contains("cuda", case=False)
+    
     # Get unique variations
     variations = df_metric["variation"].unique()
     
+    # Plot 1: All variations (one line per variation)
     fig, ax = plt.subplots(figsize=(14, 8))
     
-    # Plot each variation as a separate line
     for variation in sorted(variations):
         df_var = df_metric[df_metric["variation"] == variation].copy()
         df_var = df_var.sort_values("thread_num")
@@ -215,22 +221,71 @@ def plot_metric_overview(df: pd.DataFrame, metric_col: str, results_dir: Path) -
         ax.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
                 linewidth=2, markersize=6, label=label)
     
-    # Configure plot
     metric_display = metric_name.replace("_", " ").title()
     ax.set_ylabel("Mean Time (ms)", fontsize=12)
     ax.set_xlabel("Thread Count", fontsize=12)
-    ax.set_title(f"{metric_display} - All Variations (Overview)", fontsize=14, fontweight="bold")
+    ax.set_title(f"{metric_display} - All Variations", fontsize=14, fontweight="bold")
     ax.grid(True, linestyle="--", alpha=0.4)
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
     
     plt.tight_layout()
-    
-    # Save plot
-    output_filename = f"{metric_name}_overview.png"
-    output_path = metric_dir / output_filename
+    output_path = metric_dir / f"{metric_name}_overview_all.png"
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
+    
+    # Plot 2: SIMD vs non-SIMD (excluding CUDA)
+    df_no_cuda = df_metric[~df_metric["is_cuda"]].copy()
+    
+    if len(df_no_cuda) > 0:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
+        
+        # Non-SIMD variations
+        df_non_simd = df_no_cuda[~df_no_cuda["is_simd"]]
+        for variation in sorted(df_non_simd["variation"].unique()):
+            df_var = df_non_simd[df_non_simd["variation"] == variation].copy()
+            df_var = df_var.sort_values("thread_num")
+            
+            x_values = [int(row["thread_count"]) if row["thread_count"] else 0 
+                       for _, row in df_var.iterrows()]
+            
+            label = variation.replace("_", " ").title()
+            ax1.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
+                    linewidth=2, markersize=6, label=label)
+        
+        ax1.set_ylabel("Mean Time (ms)", fontsize=12)
+        ax1.set_xlabel("Thread Count", fontsize=12)
+        ax1.set_title(f"Non-SIMD Variations", fontsize=12, fontweight="bold")
+        ax1.grid(True, linestyle="--", alpha=0.4)
+        ax1.legend(fontsize=9)
+        
+        # SIMD variations
+        df_simd = df_no_cuda[df_no_cuda["is_simd"]]
+        for variation in sorted(df_simd["variation"].unique()):
+            df_var = df_simd[df_simd["variation"] == variation].copy()
+            df_var = df_var.sort_values("thread_num")
+            
+            x_values = [int(row["thread_count"]) if row["thread_count"] else 0 
+                       for _, row in df_var.iterrows()]
+            
+            label = variation.replace("_", " ").title()
+            ax2.plot(x_values, df_var[f"{metric_col}_ms"], marker="o", 
+                    linewidth=2, markersize=6, label=label)
+        
+        ax2.set_ylabel("Mean Time (ms)", fontsize=12)
+        ax2.set_xlabel("Thread Count", fontsize=12)
+        ax2.set_title(f"SIMD Variations", fontsize=12, fontweight="bold")
+        ax2.grid(True, linestyle="--", alpha=0.4)
+        ax2.legend(fontsize=9)
+        
+        fig.suptitle(f"{metric_display} - SIMD vs Non-SIMD Comparison (Excluding CUDA)", 
+                    fontsize=14, fontweight="bold", y=1.00)
+        plt.tight_layout()
+        
+        output_path = metric_dir / f"{metric_name}_overview_simd_comparison.png"
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
+        print(f"  Saved: {output_path}")
+        plt.close()
 
 
 def plot_variation_detail(df: pd.DataFrame, file_type: str, variation: str, 
