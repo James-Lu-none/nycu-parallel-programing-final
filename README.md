@@ -22,11 +22,8 @@ cmake -DACCEL_VARIANT=pthread_mutex_interleaved -DRENDER_VARIANT=pthread_mutex_s
 # fastest combined cpu + gpu variant
 cmake -DACCEL_VARIANT=pthread_mutex_simd_interleaved -DRENDER_VARIANT=cuda ..
 
-
 make
 
-# Run N-body simulation with randomly generated bodies
-./N_body
 # Run N-body simulation with input from file
 ./N_body ../assets/clustered_1000.txt 8
 ```
