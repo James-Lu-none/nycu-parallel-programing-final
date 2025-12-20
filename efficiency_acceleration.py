@@ -80,6 +80,12 @@ plt.tight_layout()
 plt.savefig("physicsstep_speedup.png")
 # plt.show
 
+# csv output with columns are thread_count, and rows are variations, values to 4 decimal places
+speedup_table = phys_df.pivot(index="label", columns="thread_count", values="physicsstep_speedup")
+# speedup_table = speedup_table.sort_index()
+speedup_table = speedup_table.round(4)
+speedup_table.to_csv("physicsstep_speedup_table.csv") 
+
 # ============================================================
 # Plot 2: Efficiency
 # ============================================================
@@ -101,3 +107,9 @@ plt.legend()
 plt.grid(axis="y", linestyle="--", alpha=0.5)
 plt.tight_layout()
 plt.savefig("physicsstep_efficiency.png")
+
+# csv output with columns are thread_count, and rows are variations, values to 4 decimal places
+efficiency_table = phys_df.pivot(index="label", columns="thread_count", values="physicsstep_efficiency")
+# efficiency_table = efficiency_table.sort_index()
+efficiency_table = efficiency_table.round(4)
+efficiency_table.to_csv("physicsstep_efficiency_table.csv")
