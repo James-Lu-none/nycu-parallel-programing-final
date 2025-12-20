@@ -18,7 +18,7 @@ mkdir build && cd build
 # full serial variant
 cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT=serial ..
 # fastest cpu variant
-cmake -DACCEL_VARIANT=pthread_mutex_interleaved -DRENDER_VARIANT=pthread_mutex_simd ..
+cmake -DACCEL_VARIANT=pthread_mutex_simd_interleaved -DRENDER_VARIANT=pthread_mutex_simd ..
 # fastest combined cpu + gpu variant
 cmake -DACCEL_VARIANT=pthread_mutex_simd_interleaved -DRENDER_VARIANT=cuda ..
 
