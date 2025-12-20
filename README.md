@@ -4,14 +4,28 @@
 
 ```bash
 mkdir build && cd build
-# ACCEL_VARIANT can be one of: serial, pthread, pthread_persist, pthread_interleaved
-# RENDER_VARIANT can be one of: serial, pthread_simd
-cmake -DACCEL_VARIANT=pthread_interleaved -DRENDER_VARIANT=pthread_simd ..
+# ACCEL_VARIANT can be one of: 
+# serial, serial_simd
+# pthread_blocked, pthread_interleaved, pthread_mutex_blocked, pthread_mutex_interleaved, 
+# pthread_simd_blocked, pthread_simd_interleaved, pthread_mutex_simd_blocked, pthread_mutex_simd_interleaved
+# cuda_blocked, cuda_interleaved
+# 
+# RENDER_VARIANT can be one of:
+# serial, serial_simd
+# pthread, pthread_simd, pthread_mutex, pthread_mutex_simd
+# cuda
+
+# full serial variant
+cmake -DACCEL_VARIANT=serial -DRENDER_VARIANT=serial ..
+# fastest cpu variant
+cmake -DACCEL_VARIANT=pthread_mutex_simd_interleaved -DRENDER_VARIANT=pthread_mutex_simd ..
+# fastest combined cpu + gpu variant
+cmake -DACCEL_VARIANT=pthread_mutex_simd_interleaved -DRENDER_VARIANT=cuda ..
+
 make
-# Run N-body simulation with randomly generated bodies
-./N_body
+
 # Run N-body simulation with input from file
-./N_body ../assets/dense_system_demo.txt
+./N_body ../assets/clustered_1000.txt 8
 ```
 
 ## build tracy tools

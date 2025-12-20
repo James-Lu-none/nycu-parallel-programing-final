@@ -584,6 +584,50 @@ def print_summary_stats(df: pd.DataFrame) -> None:
     df_acc = df[df["type"] == "accelerations"]
     df_render = df[df["type"] == "render"]
     
+    # save runtime to csv with columns are thread_count, and rows are variations, values is ns in string so convert to float and divide with 1e6 and round to 2 decimal places
+    # fill missing values with N/A
+    # sort rows by serial_*, pthread, pthread_mutex_*, pthread_simd_*, pthread_mutex_simd_*, cuda_*
+    physicsstep_order = [
+        "serial",
+        "serial_simd",
+        "pthread_blocked",
+        "pthread_interleaved",
+        "pthread_mutex_blocked",
+        "pthread_mutex_interleaved",
+        "pthread_simd_blocked",
+        "pthread_simd_interleaved",
+        "pthread_mutex_simd_blocked",
+        "pthread_mutex_simd_interleaved",
+        "cuda_blocked",
+        "cuda_interleaved",
+    ]
+    print(df_acc)
+    df_acc["variation"] = pd.Categorical(df_acc["variation"], categories=physicsstep_order, ordered=True)
+    runtime_table = df_acc.pivot(index="variation", columns="thread_count", values="physicsstep_mean_ns")
+    runtime_table = runtime_table.astype(float) / 1e6
+    runtime_table = runtime_table.round(2)
+    runtime_table = runtime_table.fillna("N/A")
+    runtime_table = runtime_table.sort_index()
+    runtime_table.to_csv("physicsstep_runtime_table.csv")
+
+    
+    renderstep_order = [
+        "serial",
+        "serial_simd",
+        "pthread",
+        "pthread_simd",
+        "pthread_mutex",
+        "pthread_mutex_simd",
+        "cuda"
+    ]
+    df_render["variation"] = pd.Categorical(df_render["variation"], categories=renderstep_order, ordered=True)
+    runtime_table_render = df_render.pivot(index="variation", columns="thread_count", values="renderstep_mean_ns")
+    runtime_table_render = runtime_table_render.astype(float) / 1e6
+    runtime_table_render = runtime_table_render.round(2)
+    runtime_table_render = runtime_table_render.fillna("N/A")
+    runtime_table_render = runtime_table_render.sort_index()
+    runtime_table_render.to_csv("renderstep_runtime_table.csv")
+
     print(f"\nAcceleration files: {len(df_acc)}")
     print(f"  Unique variations: {df_acc['variation'].nunique()}")
     print(f"  Variations: {', '.join(sorted(df_acc['variation'].unique()))}")
